@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "id": "group-leakage-001",
+  "title": "Stop customer leakage across an evaluation split",
+  "failure_class": "data-leakage",
+  "difficulty": "introductory",
+  "description": "Repair a deterministic train/test splitter that leaks customer entities across the evaluation boundary.",
+  "public_dir": "repo",
+  "hidden_tests_dir": "hidden_tests",
+  "grader": {
+    "command": [
+      "/usr/bin/python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_*.py",
+      "-v"
+    ],
+    "timeout_seconds": 30
+  }
+}
