@@ -17,6 +17,14 @@ def test_loads_example_task() -> None:
     assert task.grader.timeout_seconds == 30
 
 
+def test_all_checked_in_tasks_are_valid() -> None:
+    task_dirs = sorted(path for path in (PROJECT_ROOT / "tasks").iterdir() if path.is_dir())
+    loaded = [TaskSpec.load(path) for path in task_dirs]
+    assert len(loaded) == 5
+    assert len({task.task_id for task in loaded}) == len(loaded)
+    assert len({task.failure_class for task in loaded}) == len(loaded)
+
+
 def test_rejects_directory_that_does_not_match_id(tmp_path: Path) -> None:
     task_dir = tmp_path / "wrong-name"
     task_dir.mkdir()
@@ -38,4 +46,3 @@ def test_rejects_directory_that_does_not_match_id(tmp_path: Path) -> None:
     )
     with pytest.raises(SpecError, match="directory name"):
         TaskSpec.load(task_dir)
-

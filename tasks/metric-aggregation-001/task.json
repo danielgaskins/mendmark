@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "id": "metric-aggregation-001",
+  "title": "Stop frequent tasks from dominating an agent score",
+  "failure_class": "metric-design",
+  "difficulty": "introductory",
+  "description": "Repair evaluation aggregation so each task contributes equal weight and malformed trials cannot silently alter the score.",
+  "public_dir": "repo",
+  "hidden_tests_dir": "hidden_tests",
+  "grader": {
+    "command": ["/usr/bin/python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"],
+    "timeout_seconds": 30
+  }
+}
+

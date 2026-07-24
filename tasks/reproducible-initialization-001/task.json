@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "id": "reproducible-initialization-001",
+  "title": "Make seeded model initialization local and reproducible",
+  "failure_class": "reproducibility",
+  "difficulty": "introductory",
+  "description": "Repair centroid initialization that mutates training data and contaminates global random state.",
+  "public_dir": "repo",
+  "hidden_tests_dir": "hidden_tests",
+  "grader": {
+    "command": ["/usr/bin/python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"],
+    "timeout_seconds": 30
+  }
+}
+

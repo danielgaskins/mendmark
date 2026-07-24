@@ -31,13 +31,16 @@ class HiddenSplitTests(unittest.TestCase):
             test_entities = {row["entity_id"] for row in test}
             self.assertFalse(train_entities & test_entities)
 
-    def test_fraction_is_near_the_best_complete_group_choice(self) -> None:
+    def test_fraction_is_the_closest_complete_group_choice(self) -> None:
         rows = rows_for_group_sizes(8, 5, 4, 3, 2, 1)
         target = len(rows) * 0.3
         _, test = split_rows(rows, test_fraction=0.3, seed=5)
-        # A complete-group selection can reach 7 rows (4 + 3), just 0.1 from
-        # this target. Allow one row of slack without prescribing an algorithm.
-        self.assertLessEqual(abs(len(test) - target), 1.1)
+        attainable = {
+            sum(size for index, size in enumerate((8, 5, 4, 3, 2, 1)) if mask & (1 << index))
+            for mask in range(1, (1 << 6) - 1)
+        }
+        expected = min(attainable, key=lambda size: (abs(size - target), size))
+        self.assertEqual(len(test), expected)
 
     def test_seed_can_change_selected_entities(self) -> None:
         rows = rows_for_group_sizes(2, 2, 2, 2, 2, 2, 2, 2)
@@ -67,4 +70,3 @@ class HiddenSplitTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

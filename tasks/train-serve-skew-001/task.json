@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "id": "train-serve-skew-001",
+  "title": "Use training statistics during inference",
+  "failure_class": "train-serve-skew",
+  "difficulty": "introductory",
+  "description": "Repair a standardization pipeline that silently refits preprocessing statistics on each inference batch.",
+  "public_dir": "repo",
+  "hidden_tests_dir": "hidden_tests",
+  "grader": {
+    "command": ["/usr/bin/python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"],
+    "timeout_seconds": 30
+  }
+}
+

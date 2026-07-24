@@ -10,10 +10,10 @@ Repair `ml_pipeline.split.split_rows` so that:
 - Every row for an `entity_id` stays in exactly one partition.
 - The same input and seed always produce the same result.
 - Different seeds can change which entities are selected.
-- The test partition is reasonably close to `test_fraction` by row count while
-  preserving complete entities.
+- Among non-empty partitions that preserve complete entities, the test partition
+  has the closest attainable row count to `len(rows) * test_fraction`. On an
+  exact distance tie, prefer the smaller test partition.
 - Inputs are not mutated.
 - Invalid fractions and rows without `entity_id` fail clearly.
 
 Do not add third-party dependencies. Preserve the public function signature.
-

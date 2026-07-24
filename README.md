@@ -5,7 +5,7 @@ machine-learning systems. It asks a deliberately harder question than "did the
 patch make the visible tests pass?": did the agent preserve the validity of the
 experiment and the behavior of the resulting ML system?
 
-The first vertical slice includes:
+The v0.1 development slice includes:
 
 - A versioned, dependency-free task format.
 - Public workspaces that never contain hidden graders.
@@ -13,7 +13,21 @@ The first vertical slice includes:
   system mounted read-only.
 - Immutable task and workspace digests.
 - Run manifests that record human and AI collaboration.
-- A realistic entity-leakage task with public and hidden tests.
+- Five realistic ML-system failure classes with public and hidden tests.
+
+## Current task set
+
+| Task | Failure class | Failure under evaluation |
+| --- | --- | --- |
+| `group-leakage-001` | Data leakage | Repeated entities cross the train/test boundary |
+| `metric-aggregation-001` | Metric design | Frequently retried tasks dominate the headline score |
+| `reproducible-initialization-001` | Reproducibility | Seeded initialization mutates inputs and global RNG state |
+| `temporal-label-leakage-001` | Temporal leakage | Training consumes labels unavailable at the historical cutoff |
+| `train-serve-skew-001` | Train/serve skew | Inference silently refits preprocessing statistics |
+
+Every checked-in baseline is required to fail its hidden grader, and every
+reference repair is required to pass. Framework integration tests verify both
+conditions across the full task set.
 
 ## Quick start
 
@@ -88,8 +102,10 @@ runner should use disposable VMs or similarly strong isolation.
 
 ## Roadmap
 
-- Validate the task and grader format with five distinct failure classes.
 - Add an agent adapter and complete trajectory capture.
 - Add repeated trials, cost/latency accounting, and bootstrap intervals.
 - Calibrate model-based grading against blinded human review.
 - Publish a protected holdout and post-training study.
+
+See [the evaluation card](docs/evaluation-card.md) for the intended use, validity
+controls, and present limitations.

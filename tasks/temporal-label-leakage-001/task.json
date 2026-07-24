@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "id": "temporal-label-leakage-001",
+  "title": "Respect label availability in a temporal split",
+  "failure_class": "temporal-leakage",
+  "difficulty": "introductory",
+  "description": "Repair a temporal evaluation split that trains on labels unavailable at the historical cutoff.",
+  "public_dir": "repo",
+  "hidden_tests_dir": "hidden_tests",
+  "grader": {
+    "command": ["/usr/bin/python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"],
+    "timeout_seconds": 30
+  }
+}
+
