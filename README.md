@@ -1,6 +1,6 @@
-# Faultline
+# Mendmark
 
-Faultline is an evaluation and post-training lab for agents repairing broken
+Mendmark is an evaluation and post-training lab for agents repairing broken
 machine-learning systems. It asks a deliberately harder question than "did the
 patch make the visible tests pass?": did the agent preserve the validity of the
 experiment and the behavior of the resulting ML system?
@@ -31,7 +31,7 @@ conditions across the full task set.
 
 ## Quick start
 
-Faultline currently requires Linux, Python 3.10+, and `bwrap` (Bubblewrap).
+Mendmark currently requires Linux, Python 3.10+, and `bwrap` (Bubblewrap).
 The host must permit unprivileged user namespaces. If it does not, the grader
 records an `infrastructure_error` rather than counting the task as a model
 failure.
@@ -41,8 +41,8 @@ python3 -m venv .venv
 . .venv/bin/activate
 pip install -e .
 
-faultline tasks
-faultline prepare group-leakage-001 \
+mendmark tasks
+mendmark prepare group-leakage-001 \
   --operator "Daniel Gaskins" \
   --assistant "OpenAI Codex"
 ```
@@ -51,18 +51,18 @@ The prepare command prints a run directory. Work only in its `workspace/`
 directory. Then grade the result:
 
 ```bash
-faultline grade runs/<run-id>
-faultline show runs/<run-id>
+mendmark grade runs/<run-id>
+mendmark show runs/<run-id>
 ```
 
-For framework development only, `faultline grade ... --runtime local` bypasses
+For framework development only, `mendmark grade ... --runtime local` bypasses
 isolation. Results produced that way are marked `isolated: false` and must not be
 used as benchmark evidence.
 
 ## Project layout
 
 ```text
-src/faultline/                 Runner, schema, grading, and CLI
+src/mendmark/                  Runner, schema, grading, and CLI
 tasks/<task-id>/task.json      Public task metadata
 tasks/<task-id>/repo/          Files copied into an agent workspace
 tasks/<task-id>/hidden_tests/  Private deterministic grader inputs

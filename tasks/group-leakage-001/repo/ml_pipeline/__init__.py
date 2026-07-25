@@ -1,2 +1,1 @@
-"""Tiny ML data pipeline used by the Faultline task."""
-
+"""Tiny ML data pipeline used by the Mendmark task."""

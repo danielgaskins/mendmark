@@ -1,3 +1,5 @@
+"""Task specifications for Mendmark evaluations."""
+
 from __future__ import annotations
 
 import json
@@ -104,4 +106,3 @@ class TaskSpec:
             hidden_tests_dir=hidden_dir,
             grader=GraderSpec(tuple(command), timeout),
         )
-

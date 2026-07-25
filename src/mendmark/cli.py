@@ -19,7 +19,7 @@ def _task(tasks_root: Path, task_id: str) -> TaskSpec:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="faultline",
+        prog="mendmark",
         description="Evaluate agents repairing broken machine-learning systems.",
     )
     parser.add_argument("--tasks-root", default="tasks", help="task directory")
@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(load_manifest(Path(args.run_dir)), indent=2, sort_keys=True))
             return 0
     except (FileNotFoundError, KeyError, OSError, SpecError, RunnerError) as error:
-        print(f"faultline: {error}", file=sys.stderr)
+        print(f"mendmark: {error}", file=sys.stderr)
         return 2
     parser.error("unknown command")
     return 2

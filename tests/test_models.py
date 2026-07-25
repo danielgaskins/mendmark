@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from faultline.models import SpecError, TaskSpec
+from mendmark.models import SpecError, TaskSpec
 
 
 PROJECT_ROOT = Path(__file__).parents[1]

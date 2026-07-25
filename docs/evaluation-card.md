@@ -1,10 +1,10 @@
-# Faultline v0.1 evaluation card
+# Mendmark v0.1 evaluation card
 
 Status: development artifact; not yet a model leaderboard
 
 ## Intended use
 
-Faultline measures whether a tool-using coding agent can identify and repair
+Mendmark measures whether a tool-using coding agent can identify and repair
 small, realistic failures in machine-learning pipelines. It is intended for:
 
 - Comparing agent scaffolds or models under controlled conditions.

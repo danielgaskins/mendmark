@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from faultline.models import TaskSpec
-from faultline.runner import directory_digest, grade_run, prepare_run
+from mendmark.models import TaskSpec
+from mendmark.runner import directory_digest, grade_run, prepare_run
 
 
 PROJECT_ROOT = Path(__file__).parents[1]

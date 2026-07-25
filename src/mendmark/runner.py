@@ -74,7 +74,7 @@ def prepare_run(
             "difficulty": task.difficulty,
             "public_digest": directory_digest(task.public_dir),
         },
-        "framework": {"name": "faultline", "version": __version__},
+        "framework": {"name": "mendmark", "version": __version__},
         "provenance": {
             "operator": operator,
             "assistant": assistant,
@@ -89,7 +89,7 @@ def prepare_run(
 
 
 def _copy_hidden_tests(task: TaskSpec, grading_workspace: Path) -> None:
-    target = grading_workspace / "tests" / "_faultline_hidden"
+    target = grading_workspace / "tests" / "_mendmark_hidden"
     if target.exists():
         raise RunnerError("workspace contains reserved hidden-test path")
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -175,7 +175,7 @@ def grade_run(
     if runtime not in {"bwrap", "local"}:
         raise RunnerError("runtime must be 'bwrap' or 'local'")
 
-    with tempfile.TemporaryDirectory(prefix="faultline-grade-") as temp:
+    with tempfile.TemporaryDirectory(prefix="mendmark-grade-") as temp:
         grading_workspace = Path(temp) / "workspace"
         shutil.copytree(workspace, grading_workspace)
         _copy_hidden_tests(task, grading_workspace)

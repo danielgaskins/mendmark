@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "faultline-evals"
+name = "mendmark-evals"
 version = "0.1.0"
 description = "Reproducible evaluations for agents repairing broken machine-learning systems"
 readme = "README.md"
@@ -13,7 +13,7 @@ authors = [{ name = "Daniel Gaskins" }]
 dependencies = []
 
 [project.scripts]
-faultline = "faultline.cli:main"
+mendmark = "mendmark.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
