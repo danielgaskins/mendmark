@@ -16,6 +16,14 @@ protected `pypi` GitHub environment and PyPI Trusted Publishing. PyPI exposes a
 provenance attestation for both the wheel and source distribution identifying
 `danielgaskins/mendmark`, `release.yml`, and the `pypi` environment.
 
+The repository now uses SSH signatures for commits and tags. GitHub has the
+maintainer public key registered as a signing key, `.github/allowed_signers`
+defines the repository verification identity, and `release.yml` rejects
+unsigned or untrusted future release tags before building. The already-published
+`v0.4.0` tag remains an unsigned historical exception because rewriting a public
+release tag would invalidate consumers' existing reference; its distributions
+retain PyPI provenance attestations.
+
 Release verification completed on August 3, 2026:
 
 - Python 3.10 and 3.13 CI passed on the release commit.
@@ -345,6 +353,8 @@ These statements are accurate:
 - The test suite currently contains 37 passing tests.
 - Version 0.4.0 is published to PyPI through a protected Trusted Publishing
   workflow with PyPI-hosted provenance attestations.
+- Future releases require a signed tag from the repository's approved SSH
+  signing identity before any package build or publication job runs.
 
 ## Claims that are not yet supportable
 
