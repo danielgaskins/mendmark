@@ -44,9 +44,14 @@ your evals detected. A surviving mutation is a specific blind spot you can fix.
 Mendmark requires Python 3.10 or newer.
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e '.[deepeval]'
+pip install 'mendmark-evals[deepeval]'
+```
+
+To run the repository's deterministic example from a source checkout:
+
+```bash
+git clone https://github.com/danielgaskins/mendmark.git
+cd mendmark
 
 mendmark audit examples/order_agent_suite.py \
   --output mendmark-report.json \

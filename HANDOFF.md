@@ -4,9 +4,31 @@ Last updated: August 3, 2026
 
 Repository: <https://github.com/danielgaskins/mendmark>
 
-Current development release: `0.4.0`
+Current stable release: `0.4.0`
 
-0.4 implementation baseline: the current `main` release commit
+0.4 implementation baseline: commit `eb0d5efabb50cb46083b945ef9f96edbab667b26`
+
+## Release status
+
+Version 0.4.0 is published as `mendmark-evals` on PyPI and TestPyPI. The
+production release was built from the `v0.4.0` annotated tag through the
+protected `pypi` GitHub environment and PyPI Trusted Publishing. PyPI exposes a
+provenance attestation for both the wheel and source distribution identifying
+`danielgaskins/mendmark`, `release.yml`, and the `pypi` environment.
+
+Release verification completed on August 3, 2026:
+
+- Python 3.10 and 3.13 CI passed on the release commit.
+- TestPyPI publication and a clean-install JSON audit passed.
+- PyPI publication and a clean-install JSON audit passed.
+- The public pilot recruitment issue is
+  <https://github.com/danielgaskins/mendmark/issues/1>.
+
+Release links:
+
+- <https://github.com/danielgaskins/mendmark/releases/tag/v0.4.0>
+- <https://pypi.org/project/mendmark-evals/0.4.0/>
+- <https://test.pypi.org/project/mendmark-evals/0.4.0/>
 
 ## Read this first
 
@@ -321,6 +343,8 @@ These statements are accurate:
 - It supports mutation cost ceilings and Sigstore-backed artifact signatures.
 - Its included offline example catches 13 of 13 generated faults.
 - The test suite currently contains 37 passing tests.
+- Version 0.4.0 is published to PyPI through a protected Trusted Publishing
+  workflow with PyPI-hosted provenance attestations.
 
 ## Claims that are not yet supportable
 
@@ -335,7 +359,6 @@ Do not claim any of the following:
   service exists.
 - That external companies use it in production.
 - That it has paying customers or validated pricing.
-- That the Python package has been published to PyPI unless separately verified.
 
 A passing audit proves only that the configured evaluators caught the generated
 faults that were applicable to the supplied cases.
@@ -478,10 +501,10 @@ run the verification commands in HANDOFF.md.
 
 Mendmark mutation-tests agent eval suites. It plants controlled faults in
 passing tool traces and responses, reruns the team's evaluators, and reports
-which faults survive. The current development release is a local Python engine
-with DeepEval and framework-neutral JSON adapters, custom mutation plugins,
-JUnit/SARIF output, and changed-tool audits. Do not claim that hosted or other
-framework roadmap features already exist.
+which faults survive. The current stable release is a local Python engine
+published to PyPI with DeepEval and framework-neutral JSON adapters, custom
+mutation plugins, JUnit/SARIF output, and changed-tool audits. Do not claim that
+hosted or other framework roadmap features already exist.
 
 Your next objective is to implement the highest-priority unfinished milestone
 from HANDOFF.md. Preserve the privacy-safe report boundary, stable mutation IDs,

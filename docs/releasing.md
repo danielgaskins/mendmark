@@ -8,7 +8,9 @@
 5. Manually dispatch `release.yml`, then install the exact version from TestPyPI
    in a clean environment and run the JSON example.
 6. Configure the `pypi` environment with required maintainer approval.
-7. Create a signed `vX.Y.Z` GitHub release only after TestPyPI verification.
+7. Create an annotated `vX.Y.Z` tag and GitHub release only after TestPyPI
+   verification. Cryptographically sign the tag when a maintainer signing key
+   and public verification policy are configured.
 8. Wait for PyPI trusted publishing and its provenance attestation, then verify a
    clean PyPI install.
 
