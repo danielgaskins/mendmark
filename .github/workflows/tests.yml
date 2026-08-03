@@ -20,7 +20,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e '.[deepeval,dev]'
+      - run: python -m pip install -e '.[deepeval,rubric,dev]'
       - run: python -m pytest
       - name: Mutation-test the example agent evals
         run: >-

@@ -33,6 +33,7 @@ your evals detected. A surviving mutation is a specific blind spot you can fix.
 - CI release gates for kill rate, critical survivors, untested tools, and
   regressions.
 - A DeepEval adapter today, with a framework-neutral mutation engine underneath.
+- A tested Rubric example through the framework-neutral JSON protocol.
 - A validated JSON adapter for any local evaluator command.
 - JUnit and SARIF output plus changed-tool-only pull-request audits.
 - A stable plugin API for domain-specific mutation operators.
@@ -174,6 +175,9 @@ protocol](https://github.com/danielgaskins/mendmark/blob/main/docs/json-adapter.
 
 Custom domain faults can be loaded from a suite, trusted Python file, installed
 entry point, or module attribute. See [custom mutation plugins](https://github.com/danielgaskins/mendmark/blob/main/docs/custom-mutations.md).
+
+The repository also includes a tested [Rubric integration](https://github.com/danielgaskins/mendmark/blob/main/docs/rubric.md)
+that runs Rubric metrics through the same JSON protocol.
 
 ## CI provenance, budgets, and signatures
 

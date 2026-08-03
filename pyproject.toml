@@ -32,6 +32,7 @@ Changelog = "https://github.com/danielgaskins/mendmark/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 deepeval = ["deepeval>=4,<5"]
+rubric = ["rubric-eval>=0.2,<0.3"]
 dev = ["pytest>=8", "jsonschema>=4,<5"]
 
 [project.scripts]

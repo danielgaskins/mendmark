@@ -11,6 +11,8 @@ Semantic Versioning for its Python and JSON contracts.
   accept the correct final response while missing broken tool behavior.
 - A regression test proving that the weak example exposes surviving critical
   mutations before the complete example kills them.
+- A tested Rubric evaluator example that connects Rubric metrics through the
+  framework-neutral JSON protocol.
 
 ### Fixed
 
