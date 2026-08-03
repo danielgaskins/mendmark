@@ -23,6 +23,17 @@ passing agent case
 The result is a mutation kill rate. A killed mutation is a planted fault that
 your evals detected. A surviving mutation is a specific blind spot you can fix.
 
+## Two-minute demonstration
+
+[Watch the silent weak-eval demonstration](docs/assets/mendmark-weak-eval-demo.mp4).
+
+A refund-agent test passes because it checks only the final sentence. Mendmark
+changes the tool trace and finds that 9 of 13 faults escape, including a wrong
+refund amount and a duplicated refund. The complete evaluator checks the calls,
+arguments, results, and final response. It catches all 13 faults.
+
+The current cut is silent. A voice-over is still to be recorded and added.
+
 ## What teams get
 
 - A direct test of whether agent evals catch realistic failures.
