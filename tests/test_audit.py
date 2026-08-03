@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from mendmark.agent_cases import AgentCase, ToolCallRecord, ToolSpec
 from mendmark.audit import AuditPolicy, MetricResult, run_audit
 
@@ -149,3 +151,23 @@ def test_tool_contract_issues_do_not_store_argument_values() -> None:
     }
     assert "private-bad-value" not in str(report)
     assert report["gate"]["passed"] is False
+
+
+def test_audit_stops_before_evaluation_when_mutation_budget_is_exceeded() -> None:
+    call = ToolCallRecord("lookup", {"id": "1"}, "ok")
+    case = AgentCase(
+        case_id="lookup-case",
+        input="lookup",
+        actual_output="ok",
+        expected_output="ok",
+        tools_called=(call,),
+        expected_tools=(call,),
+    )
+
+    with pytest.raises(ValueError, match="exceeding the configured maximum"):
+        run_audit(
+            cases=(case,),
+            tools=(ToolSpec("lookup"),),
+            evaluator=ExactEvaluator(),
+            maximum_mutants=1,
+        )

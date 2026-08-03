@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mendmark.dev/schemas/report-v1.schema.json",
+  "title": "Mendmark privacy-safe audit report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "generated_at", "provenance", "summary", "scope",
+    "policy", "gate", "baseline_issues", "regressions", "tools", "mutations"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cases", "mutants", "killed", "survived", "errors", "kill_rate", "critical_survivors"],
+      "properties": {
+        "cases": {"type": "integer", "minimum": 1},
+        "mutants": {"type": "integer", "minimum": 0},
+        "killed": {"type": "integer", "minimum": 0},
+        "survived": {"type": "integer", "minimum": 0},
+        "errors": {"type": "integer", "minimum": 0},
+        "kill_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "critical_survivors": {"type": "integer", "minimum": 0}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "mutation_case_ids"],
+      "properties": {
+        "mode": {"enum": ["full", "selected-cases", "changed-tools"]},
+        "mutation_case_ids": {"$ref": "#/$defs/strings"},
+        "changed_tools": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum_kill_rate", "fail_on_critical_survivor", "fail_on_untested_tools", "fail_on_tool_contract_issues", "fail_on_regression"],
+      "properties": {
+        "minimum_kill_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "fail_on_critical_survivor": {"type": "boolean"},
+        "fail_on_untested_tools": {"type": "boolean"},
+        "fail_on_tool_contract_issues": {"type": "boolean"},
+        "fail_on_regression": {"type": "boolean"}
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "failures"],
+      "properties": {
+        "passed": {"type": "boolean"},
+        "failures": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "baseline_issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "failed_metrics", "errors"],
+        "properties": {
+          "case_id": {"type": "string"},
+          "failed_metrics": {"$ref": "#/$defs/strings"},
+          "errors": {"$ref": "#/$defs/strings"}
+        }
+      }
+    },
+    "regressions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["regressed", "improved", "new", "removed"],
+      "properties": {
+        "regressed": {"$ref": "#/$defs/strings"},
+        "improved": {"$ref": "#/$defs/strings"},
+        "new": {"$ref": "#/$defs/strings"},
+        "removed": {"$ref": "#/$defs/strings"}
+      }
+    },
+    "tools": {"$ref": "#/$defs/tools"},
+    "mutations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/mutation"}
+    }
+  },
+  "$defs": {
+    "strings": {"type": "array", "items": {"type": "string"}},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mendmark_version", "adapter", "policy_digest"],
+      "properties": {
+        "mendmark_version": {"type": "string"},
+        "adapter": {"enum": ["deepeval", "json-command"]},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "source_commit": {"type": "string"},
+        "source_ref": {"type": "string"},
+        "suite_version": {"type": "string"},
+        "policy_version": {"type": "string"},
+        "ci_provider": {"type": "string"},
+        "ci_run_id": {"type": "string"}
+      }
+    },
+    "contract_issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "trace", "call_index", "tool_name", "issue"],
+      "properties": {
+        "case_id": {"type": "string"},
+        "trace": {"enum": ["actual", "expected"]},
+        "call_index": {"type": "integer", "minimum": 0},
+        "tool_name": {"type": "string"},
+        "field": {"type": "string"},
+        "issue": {"type": "string"}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mutants", "killed", "survived", "errors", "kill_rate"],
+      "properties": {
+        "mutants": {"type": "integer", "minimum": 0},
+        "killed": {"type": "integer", "minimum": 0},
+        "survived": {"type": "integer", "minimum": 0},
+        "errors": {"type": "integer", "minimum": 0},
+        "kill_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["declared", "tested", "untested", "undeclared_in_cases", "added_since_baseline", "removed_since_baseline", "changed_since_baseline", "schema_digests", "contract_issues", "mutation_coverage"],
+      "properties": {
+        "declared": {"$ref": "#/$defs/strings"},
+        "tested": {"$ref": "#/$defs/strings"},
+        "untested": {"$ref": "#/$defs/strings"},
+        "undeclared_in_cases": {"$ref": "#/$defs/strings"},
+        "added_since_baseline": {"$ref": "#/$defs/strings"},
+        "removed_since_baseline": {"$ref": "#/$defs/strings"},
+        "changed_since_baseline": {"$ref": "#/$defs/strings"},
+        "schema_digests": {"type": "object", "additionalProperties": {"$ref": "#/$defs/digest"}},
+        "contract_issues": {"type": "array", "items": {"$ref": "#/$defs/contract_issue"}},
+        "mutation_coverage": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}}
+      }
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mutant_id", "source_case_id", "operator", "category", "description", "severity", "tool_name", "status", "killed_by", "evaluation_errors"],
+      "properties": {
+        "mutant_id": {"type": "string"},
+        "source_case_id": {"type": "string"},
+        "operator": {"type": "string"},
+        "category": {"type": "string"},
+        "description": {"type": "string"},
+        "severity": {"enum": ["low", "medium", "high", "critical"]},
+        "tool_name": {"type": ["string", "null"]},
+        "status": {"enum": ["killed", "survived", "error"]},
+        "killed_by": {"$ref": "#/$defs/strings"},
+        "evaluation_errors": {"$ref": "#/$defs/strings"}
+      }
+    }
+  }
+}

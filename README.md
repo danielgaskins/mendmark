@@ -33,6 +33,11 @@ your evals detected. A surviving mutation is a specific blind spot you can fix.
 - CI release gates for kill rate, critical survivors, untested tools, and
   regressions.
 - A DeepEval adapter today, with a framework-neutral mutation engine underneath.
+- A validated JSON adapter for any local evaluator command.
+- JUnit and SARIF output plus changed-tool-only pull-request audits.
+- A stable plugin API for domain-specific mutation operators.
+- Source, suite, CI, and policy provenance with packaged report schemas.
+- Sigstore Cosign signing and exact-identity verification for audit artifacts.
 
 ## Quick start
 
@@ -123,8 +128,50 @@ def get_cases():
 must be unique. Mendmark reruns those metrics against the original case and each
 mutated copy.
 
-See [the complete example](examples/order_agent_suite.py) and the
-[mutation audit guide](docs/agent-mutation-audits.md).
+See [the complete example](https://github.com/danielgaskins/mendmark/blob/main/examples/order_agent_suite.py)
+and the [mutation audit guide](https://github.com/danielgaskins/mendmark/blob/main/docs/agent-mutation-audits.md).
+
+## Use JSON instead of DeepEval
+
+Teams can export cases and traces as JSON and connect any language or eval
+framework through a local stdin/stdout command:
+
+```bash
+mendmark audit-json examples/order_agent_suite.json \
+  --evaluator-command "python3 examples/json_evaluator.py" \
+  --junit /tmp/mendmark.xml \
+  --sarif /tmp/mendmark.sarif
+```
+
+The command runs locally and receives the original and mutated cases in one batch.
+Mendmark strictly validates its metric results. See the [JSON adapter and
+protocol](https://github.com/danielgaskins/mendmark/blob/main/docs/json-adapter.md).
+
+Custom domain faults can be loaded from a suite, trusted Python file, installed
+entry point, or module attribute. See [custom mutation plugins](https://github.com/danielgaskins/mendmark/blob/main/docs/custom-mutations.md).
+
+## CI provenance, budgets, and signatures
+
+Reports automatically record the Mendmark version, adapter, canonical policy
+digest, and supported GitHub/GitLab CI metadata. Explicit versions can be added
+with `--source-commit`, `--source-ref`, `--suite-version`, and
+`--policy-version`. Use `--maximum-mutants` to stop before evaluator work when a
+suite exceeds its approved cost ceiling.
+
+Mendmark delegates signatures to Sigstore Cosign:
+
+```bash
+mendmark sign mendmark-report.json --bundle mendmark-report.sigstore.json
+mendmark verify-signature mendmark-report.json \
+  --bundle mendmark-report.sigstore.json \
+  --certificate-identity "EXPECTED_OIDC_IDENTITY" \
+  --certificate-oidc-issuer "EXPECTED_OIDC_ISSUER"
+```
+
+See [artifact signing](https://github.com/danielgaskins/mendmark/blob/main/docs/signing.md),
+the [compatibility policy](https://github.com/danielgaskins/mendmark/blob/main/docs/compatibility.md),
+the [engine benchmark](https://github.com/danielgaskins/mendmark/blob/main/docs/benchmark.md),
+and the packaged report and baseline JSON Schemas.
 
 ## Tool rollout checks
 
@@ -153,6 +200,17 @@ statuses, and tool schema digests. It does not store prompts, expected answers,
 tool arguments, or tool outputs. Teams can run the engine inside their own CI
 boundary and publish only the report.
 
+See [SECURITY.md](https://github.com/danielgaskins/mendmark/blob/main/SECURITY.md)
+for the trusted-code boundary and private
+vulnerability reporting guidance.
+
+## Design-partner pilot
+
+Teams with a real tool-using agent can follow the [pilot guide](https://github.com/danielgaskins/mendmark/blob/main/docs/pilot-guide.md)
+and [open a privacy-safe Mendmark pilot request](https://github.com/danielgaskins/mendmark/issues/new?template=pilot.yml).
+Do not include prompts, traces, payloads, credentials, or customer data in a
+public issue.
+
 ## Existing ML integrity pack
 
 Mendmark started as a benchmark for coding agents that repair ML pipelines. That
@@ -164,11 +222,13 @@ reproducibility.
 The ML pack is now one specialized use of the broader idea. An evaluator should
 be tested against known bad outcomes before its score is trusted.
 
-See [the DeepEval guide](docs/deepeval.md) and the
-[ML evaluation card](docs/evaluation-card.md).
+See [the DeepEval guide](https://github.com/danielgaskins/mendmark/blob/main/docs/deepeval.md)
+and the [ML evaluation card](https://github.com/danielgaskins/mendmark/blob/main/docs/evaluation-card.md).
 
 ## Current boundary
 
-Version 0.3 is a local, open-source engine. It does not yet provide a hosted
+Version 0.4 is a local, open-source engine. It does not yet provide a hosted
 dashboard, team accounts, remote trace ingestion, or a secrets service. The
-planned control plane is described in [the product design](docs/product.md).
+planned control plane is described in [the product design](https://github.com/danielgaskins/mendmark/blob/main/docs/product.md).
+
+Release history is maintained in [CHANGELOG.md](https://github.com/danielgaskins/mendmark/blob/main/CHANGELOG.md).

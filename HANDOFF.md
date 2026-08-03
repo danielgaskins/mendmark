@@ -4,9 +4,9 @@ Last updated: August 3, 2026
 
 Repository: <https://github.com/danielgaskins/mendmark>
 
-Current release: `0.3.0`
+Current development release: `0.4.0`
 
-Verified implementation baseline: `618d352`
+0.4 implementation baseline: the current `main` release commit
 
 ## Read this first
 
@@ -22,9 +22,10 @@ runs the team's existing evaluators again. A fault is **killed** when an
 evaluator changes from pass to fail. A fault **survives** when the damaged case
 still passes. Surviving faults identify specific gaps in the eval suite.
 
-The current product is a local engine and CLI. It is not yet a hosted platform.
-Do not describe the dashboard, team service, additional adapters, or enterprise
-runner as completed features.
+The current product is a local engine and CLI with DeepEval and framework-neutral
+JSON adapters. It is not yet a hosted platform. Do not describe the dashboard,
+team service, additional framework adapters, or enterprise runner as completed
+features.
 
 ## Why the product exists
 
@@ -125,6 +126,7 @@ The baseline stores:
 
 - Tool schema digests
 - Mutation IDs and their last accepted statuses
+- Provenance from the report that created the accepted baseline
 
 Mendmark detects:
 
@@ -164,6 +166,37 @@ Metric names must be unique.
 The included example uses deterministic DeepEval custom metrics. It requires no
 API key and makes no model calls.
 
+### Framework-neutral JSON adapter
+
+`mendmark audit-json` loads a strictly validated JSON suite and calls any local
+evaluator executable through a versioned JSON batch protocol. The evaluator is
+started once per audit and receives every original and mutated case through
+stdin. This avoids a Python or DeepEval dependency in the customer's application
+and avoids per-mutation process startup. Command failures, timeouts, malformed
+responses, inconsistent metric names, and plugin failures are infrastructure
+errors rather than mutation kills.
+
+The suite, evaluator request, and evaluator response JSON Schemas ship in the
+Python package. The complete offline example is `examples/order_agent_suite.json` with
+`examples/json_evaluator.py`.
+
+### Custom mutations and CI output
+
+Trusted custom mutation operators can be exported by a DeepEval suite or loaded
+from a Python file, module attribute, or installed `mendmark.mutations` entry
+point. Mendmark validates operator metadata and stable, unique mutation IDs.
+
+Audits can emit JUnit XML and SARIF 2.1 in addition to the canonical JSON report.
+`--changed-tools-only` evaluates only cases associated with added or changed tool
+digests while retaining suite-wide tool coverage and contract checks. A scheduled
+full audit remains necessary for changes unrelated to tool declarations.
+
+Reports record the Mendmark version, adapter, canonical policy digest, optional
+suite/policy versions, and source/CI identity. `--maximum-mutants` stops before
+evaluator work when a configured cost ceiling is exceeded. Reports and baselines
+can be signed and verified with Sigstore Cosign bundles and exact keys or OIDC
+identities; Mendmark does not implement custom cryptography.
+
 ### Existing ML integrity pack
 
 Mendmark began as a benchmark for coding agents repairing broken ML pipelines.
@@ -177,7 +210,9 @@ That pack remains available through:
 It contains five failure tasks covering leakage, metric aggregation,
 reproducibility, temporal leakage, and train-serve skew. Treat it as a
 specialized integrity pack inside the broader Mendmark product. Do not delete it
-while developing the general agent-eval system.
+while developing the general agent-eval system. Release wheels install the pack
+under `share/mendmark/tasks`; the CLI falls back there when no local `tasks/`
+directory exists.
 
 ## Quick verification
 
@@ -197,13 +232,23 @@ mendmark audit examples/order_agent_suite.py \
 Expected current result:
 
 ```text
-22 passed
+37 passed
 
 Mendmark agent-eval audit
 Cases: 1
 Mutations: 13  Killed: 13  Survived: 0  Errors: 0
 Mutation kill rate: 100.0%
 Gate: PASS
+```
+
+Also verify the framework-neutral path:
+
+```bash
+mendmark audit-json examples/order_agent_suite.json \
+  --evaluator-command "python3 examples/json_evaluator.py" \
+  --output /tmp/mendmark-json-report.json \
+  --junit /tmp/mendmark.xml \
+  --sarif /tmp/mendmark.sarif
 ```
 
 Also verify the package builds:
@@ -222,13 +267,19 @@ GitHub Actions runs both the test suite and the example mutation audit.
 | `src/mendmark/mutations.py` | Mutation protocol and built-in operators |
 | `src/mendmark/audit.py` | Audit runner, tool checks, report, and policy gate |
 | `src/mendmark/deepeval.py` | DeepEval conversion, evaluator, and suite loader |
-| `src/mendmark/cli.py` | `audit`, baseline, and original ML commands |
+| `src/mendmark/json_adapter.py` | Validated JSON suite and batch evaluator protocol |
+| `src/mendmark/plugins.py` | Trusted custom mutation discovery and loading |
+| `src/mendmark/ci_outputs.py` | JUnit and SARIF renderers |
+| `src/mendmark/signatures.py` | Sigstore Cosign sign/verify integration |
+| `src/mendmark/schemas/` | Versioned public JSON contracts |
+| `src/mendmark/cli.py` | Audit commands, baselines, and original ML commands |
 | `examples/order_agent_suite.py` | Offline working example |
 | `examples/order_agent_baseline.json` | Accepted example baseline |
 | `docs/agent-mutation-audits.md` | Technical explanation and interpretation |
 | `docs/product.md` | Commercial thesis, product surfaces, pricing hypothesis |
 | `docs/evaluation-card.md` | Original ML integrity pack limitations |
 | `.github/workflows/tests.yml` | Tests and dogfooded mutation audit |
+| `.github/workflows/release.yml` | Trusted TestPyPI/PyPI publishing and verification |
 
 ## Report data boundary
 
@@ -240,6 +291,7 @@ The JSON report contains:
 - Tool names and schema digests
 - Contract issue locations without values
 - Aggregate counts, kill rates, regressions, and gate failures
+- Runner, adapter, policy, source, suite, and CI provenance
 
 The report does not contain:
 
@@ -249,9 +301,9 @@ The report does not contain:
 - Tool outputs
 - Customer conversation content
 
-The suite file does contain cases and is executable Python. Run it only inside a
-trusted environment. The current local process is not a sandbox for hostile
-suite code.
+Suite inputs and evaluator processes do contain case content. Python suites,
+plugins, and evaluator commands are trusted local code. Run them only inside a
+trusted environment; Mendmark is not a sandbox for hostile code.
 
 ## Claims that are supportable
 
@@ -264,8 +316,11 @@ These statements are accurate:
 - It detects added, removed, changed, untested, and contract-invalid tools.
 - Its current report excludes prompts, tool arguments, and tool outputs.
 - It integrates with DeepEval and has a framework-neutral core.
+- It accepts framework-neutral JSON traces and any local JSON evaluator command.
+- It supports validated custom mutations, JUnit, SARIF, and changed-tool audits.
+- It supports mutation cost ceilings and Sigstore-backed artifact signatures.
 - Its included offline example catches 13 of 13 generated faults.
-- The test suite currently contains 22 passing tests.
+- The test suite currently contains 37 passing tests.
 
 ## Claims that are not yet supportable
 
@@ -276,7 +331,8 @@ Do not claim any of the following:
 - That Mendmark covers every possible agent failure.
 - That it already integrates with LangSmith, Phoenix, Braintrust, OpenTelemetry,
   or the OpenAI Agents SDK.
-- That a hosted dashboard, team service, VPC runner, SSO, or signed reports exist.
+- That a hosted dashboard, team service, VPC runner, SSO, or key-management
+  service exists.
 - That external companies use it in production.
 - That it has paying customers or validated pricing.
 - That the Python package has been published to PyPI unless separately verified.
@@ -317,13 +373,13 @@ Current résumé title:
 Current résumé bullets:
 
 > Built an open-source Python tool that plants controlled failures in passing
-> agent traces, reruns a team's DeepEval metrics, and fails CI when those evals
-> miss wrong tool arguments, repeated side effects, hidden tool errors, or
-> damaged responses.
+> agent traces, reruns a team's existing evaluators through DeepEval or a JSON
+> protocol, and fails CI when those evals miss wrong tool arguments, repeated
+> side effects, hidden tool errors, or damaged responses.
 
-> Added per-tool mutation coverage, tool-schema and contract checks,
-> privacy-safe reports, and regression gates that show when an evaluator stops
-> catching a fault it caught before.
+> Added custom domain mutations, per-tool coverage, tool-schema and contract
+> checks, privacy-safe JSON/JUnit/SARIF reports, and regression gates that show
+> when an evaluator stops catching a fault it caught before.
 
 The strongest interview demo is:
 
@@ -337,45 +393,18 @@ The strongest interview demo is:
 
 ## Recommended next milestone
 
-The next milestone should make Mendmark useful to a real team without requiring
-that team to adopt DeepEval.
+The prior P0 JSON adapter and plugin API, plus the P1 JUnit/SARIF and changed-tool
+mode, are implemented in 0.4. Choose the next integration from real-team usage
+rather than adding adapters speculatively.
 
-### P0: JSON trace adapter
+### P0: Execute design-partner pilots
 
-Add a documented JSON schema and CLI input for cases, tools, and evaluator
-results. This creates a portable boundary for any agent framework and gives
-teams a low-friction trial path.
-
-Acceptance criteria:
-
-- A team can export cases and tool traces without importing Mendmark in its
-  application code.
-- The adapter validates input and produces useful errors.
-- Prompts and payloads remain local.
-- The existing report and policy behavior remain unchanged.
-- A complete offline example and tests are included.
-
-### P0: Custom mutation plugin API
-
-The code already has a `MutationOperator` protocol, but the CLI cannot load
-customer-defined operators from a suite or plugin entry point.
-
-Acceptance criteria:
-
-- A suite can register custom operators without editing Mendmark.
-- Operator names and generated mutation IDs are stable and unique.
-- Plugin failures become infrastructure errors, not killed mutations.
-- The documentation includes one domain-specific operator.
-
-### P1: Pull-request output
-
-Add JUnit and SARIF output or a concise GitHub step summary. Teams should see
-critical survivors and changed tools directly in a pull request.
-
-### P1: Changed-tool audit mode
-
-Allow fast CI runs that prioritize cases and mutations associated with new or
-changed tools while retaining a scheduled full audit.
+- Run five to ten real suites through the JSON boundary and measure audit time,
+  mutation usefulness, evaluator cost, and report size.
+- Use `docs/pilot-guide.md` and the pilot issue form to recruit and onboard teams.
+- Use the included benchmark and `--maximum-mutants` to establish cost ceilings.
+- Add bounded parallel evaluation only if pilot data shows evaluator execution,
+  rather than model calls, is a material bottleneck.
 
 ### P1: More framework adapters
 
@@ -449,8 +478,10 @@ run the verification commands in HANDOFF.md.
 
 Mendmark mutation-tests agent eval suites. It plants controlled faults in
 passing tool traces and responses, reruns the team's evaluators, and reports
-which faults survive. The current release is a local Python engine and DeepEval
-adapter. Do not claim that roadmap features already exist.
+which faults survive. The current development release is a local Python engine
+with DeepEval and framework-neutral JSON adapters, custom mutation plugins,
+JUnit/SARIF output, and changed-tool audits. Do not claim that hosted or other
+framework roadmap features already exist.
 
 Your next objective is to implement the highest-priority unfinished milestone
 from HANDOFF.md. Preserve the privacy-safe report boundary, stable mutation IDs,

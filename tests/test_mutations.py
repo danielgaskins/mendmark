@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from mendmark.agent_cases import AgentCase, ToolCallRecord, ToolSpec
-from mendmark.mutations import generate_mutants
+import pytest
+
+from mendmark.mutations import Mutant, MutationPluginError, generate_mutants
 
 
 def example_case() -> AgentCase:
@@ -45,3 +47,41 @@ def test_side_effect_mutation_requires_declared_side_effect() -> None:
     assert "tool.side_effect_duplicated" not in {
         mutant.operator for mutant in mutants
     }
+
+
+def test_custom_operator_ids_must_be_stable_and_namespaced() -> None:
+    class InvalidOperator:
+        name = "domain.invalid"
+        category = "domain"
+        description = "Returns an unstable id"
+        severity = "high"
+
+        def mutate(self, case, tools):
+            return [
+                Mutant(
+                    mutant_id="random-id",
+                    operator=self.name,
+                    category=self.category,
+                    description=self.description,
+                    severity=self.severity,
+                    source_case_id=case.case_id,
+                    case=case,
+                )
+            ]
+
+    with pytest.raises(MutationPluginError, match="must start with"):
+        generate_mutants((example_case(),), (), (InvalidOperator(),))
+
+
+def test_plugin_exception_is_an_infrastructure_error() -> None:
+    class BrokenOperator:
+        name = "domain.broken"
+        category = "domain"
+        description = "Fails while generating"
+        severity = "critical"
+
+        def mutate(self, case, tools):
+            raise RuntimeError("plugin unavailable")
+
+    with pytest.raises(MutationPluginError, match="failed for case"):
+        generate_mutants((example_case(),), (), (BrokenOperator(),))

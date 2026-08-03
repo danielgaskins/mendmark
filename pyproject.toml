@@ -1,26 +1,47 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "mendmark-evals"
-version = "0.3.0"
+version = "0.4.0"
 description = "Mutation testing for agent evaluation suites"
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Daniel Gaskins" }]
 dependencies = []
+keywords = ["agents", "evaluation", "mutation-testing", "testing", "llm"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/danielgaskins/mendmark"
+Repository = "https://github.com/danielgaskins/mendmark"
+Issues = "https://github.com/danielgaskins/mendmark/issues"
+Changelog = "https://github.com/danielgaskins/mendmark/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 deepeval = ["deepeval>=4,<5"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "jsonschema>=4,<5"]
 
 [project.scripts]
 mendmark = "mendmark.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+mendmark = ["schemas/*.json"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

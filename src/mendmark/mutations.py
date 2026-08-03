@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -29,6 +30,47 @@ class MutationOperator(Protocol):
     def mutate(
         self, case: AgentCase, tools: tuple[ToolSpec, ...]
     ) -> list[Mutant]: ...
+
+
+class MutationPluginError(ValueError):
+    """Raised when a mutation operator violates the plugin contract."""
+
+
+_OPERATOR_NAME = re.compile(r"^[a-z][a-z0-9_.-]*$")
+_SEVERITIES = {"low", "medium", "high", "critical"}
+
+
+def validate_operators(
+    operators: tuple[MutationOperator, ...],
+) -> tuple[MutationOperator, ...]:
+    """Validate operator metadata before any customer code is evaluated."""
+    names: set[str] = set()
+    for operator in operators:
+        name = getattr(operator, "name", None)
+        if not isinstance(name, str) or not _OPERATOR_NAME.fullmatch(name):
+            raise MutationPluginError(
+                "mutation operator names must match ^[a-z][a-z0-9_.-]*$"
+            )
+        if name in names:
+            raise MutationPluginError(f"duplicate mutation operator name: {name}")
+        names.add(name)
+        for field in ("category", "description"):
+            value = getattr(operator, field, None)
+            if not isinstance(value, str) or not value.strip():
+                raise MutationPluginError(
+                    f"mutation operator {name!r} must define a non-empty {field}"
+                )
+        severity = getattr(operator, "severity", None)
+        if severity not in _SEVERITIES:
+            raise MutationPluginError(
+                f"mutation operator {name!r} severity must be one of "
+                + ", ".join(sorted(_SEVERITIES))
+            )
+        if not callable(getattr(operator, "mutate", None)):
+            raise MutationPluginError(
+                f"mutation operator {name!r} must define mutate(case, tools)"
+            )
+    return operators
 
 
 def _mutant(
@@ -324,8 +366,53 @@ def generate_mutants(
     tools: tuple[ToolSpec, ...],
     operators: tuple[MutationOperator, ...] = DEFAULT_MUTATIONS,
 ) -> tuple[Mutant, ...]:
+    validate_operators(operators)
     mutants: list[Mutant] = []
+    mutant_ids: set[str] = set()
     for case in cases:
         for operator in operators:
-            mutants.extend(operator.mutate(case, tools))
+            try:
+                generated = operator.mutate(case, tools)
+            except Exception as error:
+                raise MutationPluginError(
+                    f"mutation operator {operator.name!r} failed for case "
+                    f"{case.case_id!r}: {error}"
+                ) from error
+            if not isinstance(generated, list):
+                raise MutationPluginError(
+                    f"mutation operator {operator.name!r} must return a list"
+                )
+            prefix = f"{case.case_id}:{operator.name}:"
+            for mutant in generated:
+                if not isinstance(mutant, Mutant):
+                    raise MutationPluginError(
+                        f"mutation operator {operator.name!r} returned a non-Mutant"
+                    )
+                if mutant.operator != operator.name:
+                    raise MutationPluginError(
+                        f"mutation {mutant.mutant_id!r} has the wrong operator name"
+                    )
+                if mutant.source_case_id != case.case_id:
+                    raise MutationPluginError(
+                        f"mutation {mutant.mutant_id!r} has the wrong source case"
+                    )
+                if mutant.case.case_id != case.case_id:
+                    raise MutationPluginError(
+                        f"mutation {mutant.mutant_id!r} changed the case id"
+                    )
+                for field in ("category", "description", "severity"):
+                    if getattr(mutant, field) != getattr(operator, field):
+                        raise MutationPluginError(
+                            f"mutation {mutant.mutant_id!r} has inconsistent {field}"
+                        )
+                if not mutant.mutant_id.startswith(prefix):
+                    raise MutationPluginError(
+                        f"mutation id {mutant.mutant_id!r} must start with {prefix!r}"
+                    )
+                if mutant.mutant_id in mutant_ids:
+                    raise MutationPluginError(
+                        f"duplicate mutation id: {mutant.mutant_id}"
+                    )
+                mutant_ids.add(mutant.mutant_id)
+                mutants.append(mutant)
     return tuple(mutants)

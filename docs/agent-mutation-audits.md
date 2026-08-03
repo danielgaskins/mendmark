@@ -61,6 +61,10 @@ Suites can set stricter values with `MENDMARK_POLICY`. Command-line flags can
 relax a rule for an exploratory local run. A failed audit cannot overwrite the
 baseline.
 
+Audits can also emit JUnit and SARIF metadata for pull-request systems. A
+changed-tool-only run evaluates cases associated with added or changed tool
+digests; a scheduled full run remains the authoritative suite-wide audit.
+
 ## Baselines and tool changes
 
 The baseline contains only tool schema digests and mutation statuses. It lets
@@ -84,6 +88,9 @@ does not cover faults Mendmark did not generate.
 Use the rate as a quality signal for the eval suite. Use critical survivors as
 concrete work items. Add domain-specific mutation operators when a product has
 important failures that the built-ins do not represent.
+
+Custom operators are loaded as trusted local code and validated for stable,
+unique names and mutation IDs. See [custom mutation plugins](custom-mutations.md).
 
 ## Data boundary
 

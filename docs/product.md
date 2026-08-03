@@ -95,20 +95,25 @@ do not require raw trace ingestion.
 
 - Framework-neutral case and tool model.
 - DeepEval suite adapter.
+- Framework-neutral JSON suite and local batch evaluator protocol.
 - Nine built-in mutation operators.
+- Validated domain-specific mutation plugins.
 - Per-tool coverage and tool schema tracking.
 - Baseline regression gates.
 - Privacy-safe JSON output.
+- JUnit, SARIF, and changed-tool-only CI audits.
+- Source/CI provenance, mutation cost ceilings, and public report schemas.
+- Sigstore Cosign signing and verification for reports and baselines.
 - Existing deterministic ML integrity pack.
 
 ### Next
 
-- Pytest-style plugin API for custom mutations.
-- OpenAI Agents SDK, LangSmith, Phoenix, and Braintrust adapters.
-- Trace ingestion from JSON and OpenTelemetry.
-- Changed-tool-only audits for fast pull requests.
-- JUnit and SARIF output.
-- Signed baselines and report provenance.
+- Pilot the JSON adapter with real agent teams and select the next framework
+  adapter from observed demand.
+- Measure real-suite runtime, evaluator cost, and report size using explicit
+  mutation budgets and the pilot scorecard.
+- Consider OpenTelemetry, OpenAI Agents SDK, LangSmith, Phoenix, or Braintrust
+  only after the pilot identifies a clear adoption bottleneck.
 
 ### Hosted validation release
 

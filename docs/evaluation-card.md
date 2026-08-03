@@ -1,6 +1,6 @@
 # Mendmark ML integrity pack evaluation card
 
-This card covers the original ML repository-integrity pack. Mendmark 0.3 also
+This card covers the original ML repository-integrity pack. Mendmark 0.4 also
 includes mutation audits for general agent eval suites. See
 [`agent-mutation-audits.md`](agent-mutation-audits.md) for that system's scope
 and interpretation.

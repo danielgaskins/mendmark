@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 from typing import Protocol
 
@@ -31,12 +32,57 @@ class AuditPolicy:
     fail_on_regression: bool = True
 
     def __post_init__(self) -> None:
-        if not 0 <= self.minimum_kill_rate <= 1:
+        if (
+            isinstance(self.minimum_kill_rate, bool)
+            or not isinstance(self.minimum_kill_rate, (int, float))
+            or not math.isfinite(self.minimum_kill_rate)
+            or not 0 <= self.minimum_kill_rate <= 1
+        ):
             raise ValueError("minimum_kill_rate must be between 0 and 1")
+        for field_name in (
+            "fail_on_critical_survivor",
+            "fail_on_untested_tools",
+            "fail_on_tool_contract_issues",
+            "fail_on_regression",
+        ):
+            if not isinstance(getattr(self, field_name), bool):
+                raise ValueError(f"{field_name} must be a boolean")
 
 
 def _metric_map(results: tuple[MetricResult, ...]) -> dict[str, MetricResult]:
     return {result.name: result for result in results}
+
+
+def _validate_metric_results(
+    results: object, *, evaluation_id: str
+) -> tuple[MetricResult, ...]:
+    if not isinstance(results, tuple) or not results:
+        raise ValueError(
+            "evaluator must return a non-empty MetricResult tuple for "
+            f"{evaluation_id}"
+        )
+    names: set[str] = set()
+    for result in results:
+        if not isinstance(result, MetricResult):
+            raise ValueError(f"evaluator returned a non-MetricResult for {evaluation_id}")
+        if not isinstance(result.name, str) or not result.name.strip():
+            raise ValueError(f"evaluator returned an empty metric name for {evaluation_id}")
+        if result.name in names:
+            raise ValueError(
+                f"evaluator returned duplicate metric {result.name!r} for {evaluation_id}"
+            )
+        names.add(result.name)
+        if not isinstance(result.passed, bool):
+            raise ValueError(f"metric {result.name!r} passed must be a boolean")
+        if result.error is not None and result.passed:
+            raise ValueError(f"metric {result.name!r} cannot pass with an error")
+        if result.score is not None and (
+            isinstance(result.score, bool)
+            or not isinstance(result.score, (int, float))
+            or not math.isfinite(result.score)
+        ):
+            raise ValueError(f"metric {result.name!r} score must be finite or null")
+    return results
 
 
 def _tool_report(
@@ -179,35 +225,86 @@ def run_audit(
     operators: tuple[MutationOperator, ...] | None = None,
     previous_tools: dict[str, str] | None = None,
     previous_mutations: dict[str, str] | None = None,
+    mutation_case_ids: frozenset[str] | None = None,
+    maximum_mutants: int | None = None,
 ) -> dict[str, object]:
     if not cases:
         raise ValueError("an audit requires at least one agent case")
     if len({case.case_id for case in cases}) != len(cases):
         raise ValueError("agent case ids must be unique")
+    if len({tool.name for tool in tools}) != len(tools):
+        raise ValueError("tool names must be unique")
+    if maximum_mutants is not None and (
+        isinstance(maximum_mutants, bool) or maximum_mutants < 1
+    ):
+        raise ValueError("maximum_mutants must be a positive integer")
+    known_case_ids = {case.case_id for case in cases}
+    if mutation_case_ids is not None:
+        unknown = mutation_case_ids - known_case_ids
+        if unknown:
+            raise ValueError(
+                "mutation_case_ids contains unknown cases: " + ", ".join(sorted(unknown))
+            )
+    mutation_cases = (
+        cases
+        if mutation_case_ids is None
+        else tuple(case for case in cases if case.case_id in mutation_case_ids)
+    )
+
+    if operators is None:
+        mutants = generate_mutants(mutation_cases, tools)
+    else:
+        mutants = generate_mutants(mutation_cases, tools, operators)
+    if maximum_mutants is not None and len(mutants) > maximum_mutants:
+        raise ValueError(
+            f"audit generated {len(mutants)} mutations, exceeding the configured "
+            f"maximum of {maximum_mutants}"
+        )
+
+    evaluation_cases = mutation_cases + tuple(mutant.case for mutant in mutants)
+    evaluate_many = getattr(evaluator, "evaluate_many", None)
+    if not evaluation_cases:
+        evaluated_cases = ()
+    elif callable(evaluate_many):
+        evaluated_cases = tuple(evaluate_many(evaluation_cases))
+        if len(evaluated_cases) != len(evaluation_cases):
+            raise ValueError(
+                "batch evaluator returned a different number of result sets than cases"
+            )
+    else:
+        evaluated_cases = tuple(evaluator.evaluate(case) for case in evaluation_cases)
+    evaluated_cases = tuple(
+        _validate_metric_results(results, evaluation_id=f"evaluation-{index}")
+        for index, results in enumerate(evaluated_cases)
+    )
 
     baseline: dict[str, tuple[MetricResult, ...]] = {}
     baseline_issues: list[dict[str, object]] = []
-    for case in cases:
-        results = evaluator.evaluate(case)
+    for case, results in zip(mutation_cases, evaluated_cases):
         baseline[case.case_id] = results
         failed = [result.name for result in results if not result.passed]
-        errors = [result.name for result in results if result.error]
-        if failed or errors:
+        result_errors = [result.name for result in results if result.error]
+        if failed or result_errors:
             baseline_issues.append(
-                {"case_id": case.case_id, "failed_metrics": failed, "errors": errors}
+                {
+                    "case_id": case.case_id,
+                    "failed_metrics": failed,
+                    "errors": result_errors,
+                }
             )
 
-    if operators is None:
-        mutants = generate_mutants(cases, tools)
-    else:
-        mutants = generate_mutants(cases, tools, operators)
+    mutated_evaluations = evaluated_cases[len(mutation_cases) :]
 
     mutation_results: list[dict[str, object]] = []
     killed = 0
     errors = 0
-    for mutant in mutants:
+    for mutant, mutated_results in zip(mutants, mutated_evaluations):
         original = _metric_map(baseline[mutant.source_case_id])
-        mutated_results = evaluator.evaluate(mutant.case)
+        mutated_names = {result.name for result in mutated_results}
+        if mutated_names != set(original):
+            raise ValueError(
+                f"evaluator metric names changed for mutation {mutant.mutant_id!r}"
+            )
         killed_by: list[str] = []
         evaluation_errors: list[str] = []
         for result in mutated_results:
@@ -264,7 +361,7 @@ def run_audit(
         tools, mutation_results
     )
     gate_failures: list[str] = []
-    if kill_rate < policy.minimum_kill_rate:
+    if mutants and kill_rate < policy.minimum_kill_rate:
         gate_failures.append(
             f"mutation kill rate {kill_rate:.1%} is below "
             f"{policy.minimum_kill_rate:.1%}"
@@ -300,6 +397,10 @@ def run_audit(
             "errors": errors,
             "kill_rate": round(kill_rate, 6),
             "critical_survivors": len(critical_survivors),
+        },
+        "scope": {
+            "mode": "full" if mutation_case_ids is None else "selected-cases",
+            "mutation_case_ids": [case.case_id for case in mutation_cases],
         },
         "policy": asdict(policy),
         "gate": {"passed": not gate_failures, "failures": gate_failures},

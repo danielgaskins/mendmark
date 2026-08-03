@@ -24,6 +24,8 @@ from .models import TaskSpec
 from .runner import RunnerError, grade_run, load_manifest
 from .agent_cases import AgentCase, ToolCallRecord, ToolSpec
 from .audit import AuditPolicy, MetricResult
+from .mutations import DEFAULT_MUTATIONS, MutationOperator
+from .plugins import operators_from_module
 
 
 def _metadata(test_case: Any) -> dict[str, Any]:
@@ -225,11 +227,13 @@ class LoadedDeepEvalSuite:
         tools: tuple[ToolSpec, ...],
         metric_factory: Callable[[], list[Any]],
         policy: AuditPolicy,
+        operators: tuple[MutationOperator, ...],
     ) -> None:
         self.cases = cases
         self.tools = tools
         self.evaluator = DeepEvalCaseEvaluator(metric_factory)
         self.policy = policy
+        self.operators = operators
 
 
 def _load_module(path: Path) -> ModuleType:
@@ -276,9 +280,11 @@ def load_deepeval_suite(path: str | Path) -> LoadedDeepEvalSuite:
     if not isinstance(raw_policy, dict):
         raise ValueError("MENDMARK_POLICY must be an object")
     policy = AuditPolicy(**raw_policy)
+    operators = DEFAULT_MUTATIONS + operators_from_module(module)
     return LoadedDeepEvalSuite(
         cases=cases,
         tools=tools,
         metric_factory=module.get_metrics,
         policy=policy,
+        operators=operators,
     )

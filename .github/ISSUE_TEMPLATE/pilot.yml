@@ -1,0 +1,58 @@
+name: Mendmark pilot request
+description: Apply to mutation-test a real tool-using agent eval suite.
+title: "Pilot: "
+labels: [pilot]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mendmark runs inside your environment. Do not post prompts, traces,
+        customer data, credentials, or other sensitive content in this issue.
+  - type: dropdown
+    id: framework
+    attributes:
+      label: Current eval or trace system
+      options:
+        - DeepEval
+        - OpenTelemetry
+        - OpenAI Agents SDK
+        - LangSmith
+        - Phoenix
+        - Braintrust
+        - Custom JSON
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: tool-count
+    attributes:
+      label: Approximate declared tool count
+      placeholder: "12"
+    validations:
+      required: true
+  - type: textarea
+    id: failure-class
+    attributes:
+      label: Failure class you need evaluators to catch
+      description: Describe the class without sharing customer content or payloads.
+    validations:
+      required: true
+  - type: dropdown
+    id: metadata
+    attributes:
+      label: Can privacy-safe report metadata leave your environment?
+      options:
+        - "Yes"
+        - "No"
+        - Requires security review
+    validations:
+      required: true
+  - type: checkboxes
+    id: agreement
+    attributes:
+      label: Pilot expectations
+      options:
+        - label: We can run a local audit against a real non-production or approved suite.
+          required: true
+        - label: We can share aggregate setup time, runtime, and survivor counts.
+          required: true

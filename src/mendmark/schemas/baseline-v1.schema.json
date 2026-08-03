@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mendmark.dev/schemas/baseline-v1.schema.json",
+  "title": "Mendmark accepted baseline",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "tools", "mutations"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "tools": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/digest"}
+    },
+    "mutations": {
+      "type": "object",
+      "additionalProperties": {"enum": ["killed", "survived", "error"]}
+    },
+    "accepted_from": {
+      "type": "object",
+      "required": ["mendmark_version", "adapter", "policy_digest"],
+      "properties": {
+        "mendmark_version": {"type": "string"},
+        "adapter": {"enum": ["deepeval", "json-command"]},
+        "policy_digest": {"$ref": "#/$defs/digest"},
+        "source_commit": {"type": "string"},
+        "source_ref": {"type": "string"},
+        "suite_version": {"type": "string"},
+        "policy_version": {"type": "string"},
+        "ci_provider": {"type": "string"},
+        "ci_run_id": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

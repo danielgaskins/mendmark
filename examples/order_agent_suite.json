@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "policy": {
+    "minimum_kill_rate": 1.0,
+    "fail_on_critical_survivor": true,
+    "fail_on_untested_tools": true
+  },
+  "tools": [
+    {
+      "name": "lookup_order",
+      "description": "Fetch an order before changing it",
+      "input_schema": {
+        "type": "object",
+        "properties": {"order_id": {"type": "string"}},
+        "required": ["order_id"]
+      },
+      "side_effecting": false
+    },
+    {
+      "name": "refund_order",
+      "description": "Issue a refund after the order has been verified",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "order_id": {"type": "string"},
+          "amount": {"type": "number"}
+        },
+        "required": ["order_id", "amount"]
+      },
+      "side_effecting": true
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "refund-paid-order",
+      "input": "Refund order 104 in full.",
+      "actual_output": "Refund refund-8 was accepted for $29.99.",
+      "expected_output": "Refund refund-8 was accepted for $29.99.",
+      "tools_called": [
+        {
+          "name": "lookup_order",
+          "input_parameters": {"order_id": "order-104"},
+          "output": {"status": "paid", "total": 29.99}
+        },
+        {
+          "name": "refund_order",
+          "input_parameters": {"order_id": "order-104", "amount": 29.99},
+          "output": {"refund_id": "refund-8", "status": "accepted"}
+        }
+      ],
+      "expected_tools": [
+        {
+          "name": "lookup_order",
+          "input_parameters": {"order_id": "order-104"},
+          "output": {"status": "paid", "total": 29.99}
+        },
+        {
+          "name": "refund_order",
+          "input_parameters": {"order_id": "order-104", "amount": 29.99},
+          "output": {"refund_id": "refund-8", "status": "accepted"}
+        }
+      ]
+    }
+  ]
+}

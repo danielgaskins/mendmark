@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mendmark.dev/schemas/evaluator-response-v1.schema.json",
+  "title": "Mendmark evaluator response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "evaluations"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evaluation_id", "results"],
+        "properties": {
+          "evaluation_id": {"type": "string", "minLength": 1},
+          "results": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "passed"],
+              "properties": {
+                "name": {"type": "string", "minLength": 1},
+                "score": {"type": ["number", "null"]},
+                "passed": {"type": "boolean"},
+                "reason": {"type": ["string", "null"], "minLength": 1},
+                "error": {"type": ["string", "null"], "minLength": 1}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
