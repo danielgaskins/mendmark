@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from deepeval.metrics import BaseMetric, ToolCorrectnessMetric
-from deepeval.test_case import LLMTestCase, ToolCall, ToolCallParams
+from deepeval.metrics import BaseMetric
+from deepeval.test_case import LLMTestCase, ToolCall
 
 
 TOOLS = [
@@ -65,19 +65,45 @@ class ExactOutputMetric(BaseMetric):
         return "Exact outcome"
 
 
+class ExactToolTraceMetric(BaseMetric):
+    def __init__(self) -> None:
+        self.threshold = 1.0
+        self.score = 0.0
+        self.success = False
+        self.reason = None
+        self.error = None
+        self.async_mode = False
+
+    @staticmethod
+    def _record(call: ToolCall) -> tuple[object, ...]:
+        return (
+            call.name,
+            call.input_parameters,
+            call.output,
+        )
+
+    def measure(self, test_case: LLMTestCase) -> float:
+        actual = [self._record(call) for call in test_case.tools_called or ()]
+        expected = [self._record(call) for call in test_case.expected_tools or ()]
+        self.score = float(actual == expected)
+        self.success = self.score == 1.0
+        self.reason = "The ordered tool trace matches the expected trace."
+        return self.score
+
+    async def a_measure(self, test_case: LLMTestCase) -> float:
+        return self.measure(test_case)
+
+    def is_successful(self) -> bool:
+        return self.success
+
+    @property
+    def __name__(self) -> str:
+        return "Exact tool trace"
+
+
 def get_metrics() -> list[BaseMetric]:
     return [
-        ToolCorrectnessMetric(
-            threshold=1.0,
-            evaluation_params=[
-                ToolCallParams.INPUT_PARAMETERS,
-                ToolCallParams.OUTPUT,
-            ],
-            should_consider_ordering=True,
-            should_exact_match=True,
-            strict_mode=True,
-            include_reason=True,
-        ),
+        ExactToolTraceMetric(),
         ExactOutputMetric(),
     ]
 

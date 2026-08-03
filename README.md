@@ -68,7 +68,7 @@ current tool schemas and mutation results with the last accepted baseline.
 A suite is a trusted local Python file. It exports three things:
 
 ```python
-from deepeval.metrics import ToolCorrectnessMetric
+from deepeval.metrics import BaseMetric
 from deepeval.test_case import LLMTestCase, ToolCall
 
 TOOLS = [
@@ -96,7 +96,9 @@ MENDMARK_POLICY = {
 
 
 def get_metrics():
-    return [ToolCorrectnessMetric(strict_mode=True)]
+    # Return your DeepEval metrics here. The complete example includes a
+    # deterministic tool-trace metric that runs without an API key.
+    return [MyToolMetric()]
 
 
 def get_cases():
