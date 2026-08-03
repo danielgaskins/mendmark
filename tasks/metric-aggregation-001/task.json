@@ -5,6 +5,12 @@
   "failure_class": "metric-design",
   "difficulty": "introductory",
   "description": "Repair evaluation aggregation so each task contributes equal weight and malformed trials cannot silently alter the score.",
+  "checks": {
+    "test_tasks_receive_equal_weight": "Each task contributes equal weight to the headline score",
+    "test_duplicate_trial_is_rejected": "Duplicate trial identifiers are rejected",
+    "test_empty_records_are_rejected": "An empty result set is rejected",
+    "test_malformed_fields_are_rejected": "Malformed result fields are rejected"
+  },
   "public_dir": "repo",
   "hidden_tests_dir": "hidden_tests",
   "grader": {
@@ -12,4 +18,3 @@
     "timeout_seconds": 30
   }
 }
-

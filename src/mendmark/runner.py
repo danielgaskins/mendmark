@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import resource
 import shutil
 import subprocess
@@ -15,6 +16,13 @@ from typing import Any, Iterable
 
 from . import __version__
 from .models import TaskSpec
+
+
+_UNITTEST_RESULT = re.compile(
+    r"^(?P<name>test_[A-Za-z0-9_]+) \([^\n]+\) \.\.\. "
+    r"(?P<status>ok|FAIL|ERROR|skipped .+)$",
+    re.MULTILINE,
+)
 
 
 class RunnerError(RuntimeError):
@@ -55,7 +63,6 @@ def prepare_run(
     runs_root: Path,
     *,
     operator: str,
-    assistant: str | None,
 ) -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_id = f"{task.task_id}-{stamp}-{uuid.uuid4().hex[:8]}"
@@ -75,11 +82,7 @@ def prepare_run(
             "public_digest": directory_digest(task.public_dir),
         },
         "framework": {"name": "mendmark", "version": __version__},
-        "provenance": {
-            "operator": operator,
-            "assistant": assistant,
-            "collaboration_disclosed": bool(assistant),
-        },
+        "operator": operator,
         "created_at": utc_now(),
         "workspace_initial_digest": directory_digest(workspace),
         "grade_attempts": [],
@@ -155,6 +158,27 @@ def _resource_limits() -> None:
     resource.setrlimit(resource.RLIMIT_NPROC, (128, 128))
 
 
+def _check_results(task: TaskSpec, output: str) -> list[dict[str, str]]:
+    observed: dict[str, str] = {}
+    for match in _UNITTEST_RESULT.finditer(output):
+        status = match.group("status")
+        if status == "ok":
+            normalized = "passed"
+        elif status.startswith("skipped"):
+            normalized = "skipped"
+        else:
+            normalized = "failed"
+        observed[match.group("name")] = normalized
+    return [
+        {
+            "id": check_id,
+            "description": description,
+            "status": observed.get(check_id, "unknown"),
+        }
+        for check_id, description in task.checks
+    ]
+
+
 def grade_run(
     run_dir: Path,
     task: TaskSpec,
@@ -226,6 +250,7 @@ def grade_run(
             "timed_out": timed_out,
             "command": list(task.grader.command),
             "output": output,
+            "checks": _check_results(task, output),
         }
         infrastructure_error = (
             runtime == "bwrap"

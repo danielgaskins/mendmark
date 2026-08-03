@@ -5,6 +5,14 @@
   "failure_class": "data-leakage",
   "difficulty": "introductory",
   "description": "Repair a deterministic train/test splitter that leaks customer entities across the evaluation boundary.",
+  "checks": {
+    "test_entities_never_cross_the_boundary": "No entity appears in both training and test data",
+    "test_fraction_is_the_closest_complete_group_choice": "The split uses the closest attainable complete-group test size",
+    "test_seed_can_change_selected_entities": "The seed can change which entities are selected",
+    "test_input_is_not_mutated": "The splitter does not mutate its input",
+    "test_missing_entity_id_fails_clearly": "Rows without entity identifiers fail clearly",
+    "test_empty_rows_are_rejected": "Empty input is rejected"
+  },
   "public_dir": "repo",
   "hidden_tests_dir": "hidden_tests",
   "grader": {

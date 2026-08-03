@@ -43,6 +43,7 @@ class TaskSpec:
     failure_class: str
     difficulty: str
     description: str
+    checks: tuple[tuple[str, str], ...]
     public_dir: Path
     hidden_tests_dir: Path
     grader: GraderSpec
@@ -94,6 +95,17 @@ class TaskSpec:
                 f"task id {task_id!r} must match directory name {root.name!r}"
             )
 
+        checks_data = data.get("checks")
+        if not isinstance(checks_data, dict) or not checks_data:
+            raise SpecError("'checks' must be a non-empty object")
+        checks: list[tuple[str, str]] = []
+        for check_id, description in checks_data.items():
+            if not isinstance(check_id, str) or not check_id.startswith("test_"):
+                raise SpecError("check ids must be test function names")
+            if not isinstance(description, str) or not description.strip():
+                raise SpecError(f"check {check_id!r} must have a description")
+            checks.append((check_id, description.strip()))
+
         return cls(
             root=root,
             schema_version=_required_string(data, "schema_version"),
@@ -102,6 +114,7 @@ class TaskSpec:
             failure_class=_required_string(data, "failure_class"),
             difficulty=_required_string(data, "difficulty"),
             description=_required_string(data, "description"),
+            checks=tuple(checks),
             public_dir=public_dir,
             hidden_tests_dir=hidden_dir,
             grader=GraderSpec(tuple(command), timeout),

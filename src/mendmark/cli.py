@@ -31,7 +31,6 @@ def build_parser() -> argparse.ArgumentParser:
     prepare.add_argument("task_id")
     prepare.add_argument("--runs-root", default="runs")
     prepare.add_argument("--operator", required=True)
-    prepare.add_argument("--assistant", default=None)
 
     grade = subparsers.add_parser("grade", help="grade an existing run")
     grade.add_argument("run_dir")
@@ -67,7 +66,6 @@ def main(argv: list[str] | None = None) -> int:
                 task,
                 Path(args.runs_root),
                 operator=args.operator,
-                assistant=args.assistant,
             )
             print(run_dir)
             return 0

@@ -37,22 +37,21 @@ def test_directory_digest_changes_with_contents(tmp_path: Path) -> None:
     assert directory_digest(target) != first
 
 
-def test_prepare_discloses_assistant_and_excludes_hidden_tests(tmp_path: Path) -> None:
+def test_prepare_records_operator_and_excludes_hidden_tests(tmp_path: Path) -> None:
     run_dir = prepare_run(
         task(),
         tmp_path / "runs",
         operator="Daniel Gaskins",
-        assistant="OpenAI Codex",
     )
     manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["provenance"]["collaboration_disclosed"] is True
-    assert manifest["provenance"]["assistant"] == "OpenAI Codex"
+    assert manifest["operator"] == "Daniel Gaskins"
+    assert "provenance" not in manifest
     assert not list((run_dir / "workspace").rglob("test_hidden.py"))
 
 
 def test_broken_baseline_fails_hidden_grader(tmp_path: Path) -> None:
     run_dir = prepare_run(
-        task(), tmp_path / "runs", operator="Test", assistant=None
+        task(), tmp_path / "runs", operator="Test"
     )
     result = grade_run(run_dir, task(), runtime="local")
     assert result["success"] is False
@@ -61,12 +60,15 @@ def test_broken_baseline_fails_hidden_grader(tmp_path: Path) -> None:
     assert result["isolated"] is False
     assert "FAIL" in result["output"]
     assert "test_entities_never_cross_the_boundary" in result["output"]
+    statuses = {check["id"]: check["status"] for check in result["checks"]}
+    assert statuses["test_entities_never_cross_the_boundary"] == "failed"
+    assert statuses["test_fraction_is_the_closest_complete_group_choice"] == "passed"
     assert "ModuleNotFoundError" not in result["output"]
 
 
 def test_reference_solution_passes_hidden_grader(tmp_path: Path) -> None:
     run_dir = prepare_run(
-        task(), tmp_path / "runs", operator="Test", assistant=None
+        task(), tmp_path / "runs", operator="Test"
     )
     shutil.copyfile(
         TASK_DIR / "reference" / "ml_pipeline" / "split.py",
@@ -99,7 +101,6 @@ def test_additional_task_baselines_fail_and_references_pass(
         current_task,
         tmp_path / "runs",
         operator="Test",
-        assistant=None,
     )
     baseline = grade_run(run_dir, current_task, runtime="local")
     assert baseline["valid"] is True

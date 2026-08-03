@@ -15,6 +15,7 @@ def test_loads_example_task() -> None:
     assert task.task_id == "group-leakage-001"
     assert task.failure_class == "data-leakage"
     assert task.grader.timeout_seconds == 30
+    assert len(task.checks) == 6
 
 
 def test_all_checked_in_tasks_are_valid() -> None:
@@ -38,6 +39,7 @@ def test_rejects_directory_that_does_not_match_id(tmp_path: Path) -> None:
           "failure_class": "data",
           "difficulty": "easy",
           "description": "Description",
+          "checks": {"test_contract": "The contract holds"},
           "public_dir": "repo",
           "hidden_tests_dir": "hidden",
           "grader": {"command": ["python3"], "timeout_seconds": 10}

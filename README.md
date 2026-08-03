@@ -1,40 +1,55 @@
 # Mendmark
 
-Mendmark is an evaluation and post-training lab for agents repairing broken
-machine-learning systems. It asks a deliberately harder question than "did the
-patch make the visible tests pass?": did the agent preserve the validity of the
-experiment and the behavior of the resulting ML system?
+Mendmark checks whether a coding agent repaired a machine-learning system
+without breaking the experiment that system was meant to run.
 
-The v0.1 development slice includes:
+A patch can make every visible test pass while leaking labels, fitting
+preprocessing on inference data, changing the scoring rule, or contaminating
+global state. Mendmark gives each repair task a stated contract and a hidden,
+deterministic grader. It runs the submitted workspace in isolation and records
+the exact code that was graded.
 
-- A versioned, dependency-free task format.
-- Public workspaces that never contain hidden graders.
-- Isolated grading through Bubblewrap with networking disabled and the host
-  system mounted read-only.
-- Immutable task and workspace digests.
-- Run manifests that record human and AI collaboration.
-- Five realistic ML-system failure classes with public and hidden tests.
+## Why this exists
 
-## Current task set
+Output and trace evaluators answer important questions about an agent:
 
-| Task | Failure class | Failure under evaluation |
-| --- | --- | --- |
-| `group-leakage-001` | Data leakage | Repeated entities cross the train/test boundary |
-| `metric-aggregation-001` | Metric design | Frequently retried tasks dominate the headline score |
-| `reproducible-initialization-001` | Reproducibility | Seeded initialization mutates inputs and global RNG state |
-| `temporal-label-leakage-001` | Temporal leakage | Training consumes labels unavailable at the historical cutoff |
-| `train-serve-skew-001` | Train/serve skew | Inference silently refits preprocessing statistics |
+- Did it complete the task?
+- Did it call the right tools?
+- Was its final answer relevant and well supported?
 
-Every checked-in baseline is required to fail its hidden grader, and every
-reference repair is required to pass. Framework integration tests verify both
-conditions across the full task set.
+Code-changing agents create another problem. The final answer can sound right
+and the public tests can pass while the edited repository no longer measures
+what its owner intended. Mendmark checks the repository itself after the agent
+finishes.
+
+Mendmark is designed to run beside [DeepEval](https://github.com/confident-ai/deepeval),
+not replace it. DeepEval can score the agent's output, trace, plan, and tool use.
+Mendmark adds a deterministic experiment-integrity result to that evaluation.
+
+```text
+agent request and trace  ->  DeepEval metrics
+edited ML repository     ->  Mendmark hidden grader
+                         ->  one CI report
+```
+
+## What it catches
+
+| Task | Integrity failure |
+| --- | --- |
+| `group-leakage-001` | Repeated entities cross the train/test boundary |
+| `metric-aggregation-001` | Frequently retried tasks dominate the headline score |
+| `reproducible-initialization-001` | Seeded initialization mutates inputs and global RNG state |
+| `temporal-label-leakage-001` | Training consumes labels unavailable at the historical cutoff |
+| `train-serve-skew-001` | Inference silently refits preprocessing statistics |
+
+Every checked-in baseline must fail its hidden grader. Every reference repair
+must pass. The framework test suite verifies both conditions across the complete
+task set.
 
 ## Quick start
 
-Mendmark currently requires Linux, Python 3.10+, and `bwrap` (Bubblewrap).
-The host must permit unprivileged user namespaces. If it does not, the grader
-records an `infrastructure_error` rather than counting the task as a model
-failure.
+Mendmark requires Linux and Python 3.10 or newer. Isolated grading also requires
+Bubblewrap and a host that permits unprivileged user namespaces.
 
 ```bash
 python3 -m venv .venv
@@ -42,70 +57,90 @@ python3 -m venv .venv
 pip install -e .
 
 mendmark tasks
-mendmark prepare group-leakage-001 \
-  --operator "Daniel Gaskins" \
-  --assistant "OpenAI Codex"
+mendmark prepare group-leakage-001 --operator "local-run"
 ```
 
-The prepare command prints a run directory. Work only in its `workspace/`
-directory. Then grade the result:
+The prepare command prints a run directory. Give its `workspace/` directory to
+the coding agent. Grade the edited workspace when the agent finishes:
 
 ```bash
 mendmark grade runs/<run-id>
 mendmark show runs/<run-id>
 ```
 
-For framework development only, `mendmark grade ... --runtime local` bypasses
-isolation. Results produced that way are marked `isolated: false` and must not be
-used as benchmark evidence.
+The default grader uses Bubblewrap with networking disabled. For framework
+development on a trusted repository, `--runtime local` bypasses isolation. The
+result is marked `isolated: false` and should not be used as benchmark evidence.
+
+## DeepEval integration
+
+Install the optional integration:
+
+```bash
+pip install -e '.[deepeval]'
+```
+
+Add the Mendmark run directory to a DeepEval test case and include the metric:
+
+```python
+from deepeval import assert_test
+from deepeval.test_case import LLMTestCase
+from mendmark.deepeval import MendmarkIntegrityMetric
+
+test_case = LLMTestCase(
+    input="Repair the group leakage in this evaluation split.",
+    actual_output="The coding agent completed its repair.",
+    metadata={"mendmark_run_dir": "runs/<run-id>"},
+)
+
+assert_test(
+    test_case,
+    [MendmarkIntegrityMetric(tasks_root="tasks")],
+    run_async=False,
+)
+```
+
+DeepEval records a score of `1.0` when the hidden integrity contract passes and
+`0.0` when it fails. Sandbox failures raise an error rather than being counted
+as agent failures. See [the integration guide](docs/deepeval.md) for a complete
+example.
+
+## Trust model
+
+The public workspace never contains hidden tests. Grading copies the submitted
+workspace into a temporary directory and adds the hidden tests only to that copy.
+Run manifests record:
+
+- Task and framework versions.
+- Initial and final workspace digests.
+- Grader command and runtime.
+- Raw grader output.
+- Duration, timeout, isolation, and infrastructure status.
+
+The default Bubblewrap sandbox has no network namespace, a read-only host
+runtime, a fresh `/tmp`, and write access only to the temporary workspace. This
+is suitable for controlled benchmark tasks. It is not a hardened service for
+arbitrary hostile submissions. A hosted runner should use disposable VMs or an
+equivalent boundary.
 
 ## Project layout
 
 ```text
-src/mendmark/                  Runner, schema, grading, and CLI
+src/mendmark/                  Runner, task schema, CLI, and integrations
 tasks/<task-id>/task.json      Public task metadata
-tasks/<task-id>/repo/          Files copied into an agent workspace
-tasks/<task-id>/hidden_tests/  Private deterministic grader inputs
-tasks/<task-id>/reference/     Author-only reference material
+tasks/<task-id>/repo/          Workspace copied for the agent
+tasks/<task-id>/hidden_tests/  Deterministic integrity contract
+tasks/<task-id>/reference/     Author-only reference repair
 tests/                         Framework and end-to-end tests
-runs/                          Local run artifacts (ignored by git)
+runs/                          Local run artifacts, ignored by Git
 ```
 
-## AI collaboration policy
+## Present limits
 
-This repository is intentionally agent-native. Agents may help author code,
-tasks, tests, analysis, and documentation. That assistance is recorded rather
-than concealed.
+Mendmark currently contains five small, hand-authored development tasks. The
+checked-in hidden tests are visible to repository readers, so this release is a
+framework demonstration rather than a protected model leaderboard. It does not
+yet run agents, capture trajectories, repeat trials, or report cost and latency.
 
-The human owner remains responsible for:
-
-1. Choosing the research question and accepting or rejecting design changes.
-2. Auditing task validity, hidden graders, and headline findings.
-3. Reproducing results from a clean environment.
-4. Understanding and defending every material claim in the report.
-5. Following each employer's rules during applications and assessments.
-
-Agent use here is not permission to use an agent during an interview or take-home
-where the employer prohibits it. The benchmark is portfolio evidence; it is not
-a substitute for unaided technical ability.
-
-## Security model
-
-The default grader copies the submitted workspace into a temporary directory and
-runs it under Bubblewrap. The sandbox has no network namespace, a read-only host
-runtime, a fresh `/tmp`, and write access only to the temporary workspace. Hidden
-tests are added only to that temporary grading copy.
-
-This is defense in depth for benchmark tasks, not a hardened hostile-code service.
-Do not run untrusted public submissions on a personal machine. A later hosted
-runner should use disposable VMs or similarly strong isolation.
-
-## Roadmap
-
-- Add an agent adapter and complete trajectory capture.
-- Add repeated trials, cost/latency accounting, and bootstrap intervals.
-- Calibrate model-based grading against blinded human review.
-- Publish a protected holdout and post-training study.
-
-See [the evaluation card](docs/evaluation-card.md) for the intended use, validity
-controls, and present limitations.
+See [the evaluation card](docs/evaluation-card.md) for the validity controls,
+known limitations, and publication gate.

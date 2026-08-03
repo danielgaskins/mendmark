@@ -4,13 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mendmark-evals"
-version = "0.1.0"
-description = "Reproducible evaluations for agents repairing broken machine-learning systems"
+version = "0.2.0"
+description = "Deterministic integrity checks for agents that modify machine-learning systems"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Daniel Gaskins" }]
 dependencies = []
+
+[project.optional-dependencies]
+deepeval = ["deepeval>=4,<5"]
+dev = ["pytest>=8"]
 
 [project.scripts]
 mendmark = "mendmark.cli:main"

@@ -5,6 +5,13 @@
   "failure_class": "reproducibility",
   "difficulty": "introductory",
   "description": "Repair centroid initialization that mutates training data and contaminates global random state.",
+  "checks": {
+    "test_input_is_not_mutated_or_aliased": "Initialization does not mutate or alias the input",
+    "test_global_random_state_is_unchanged": "Initialization does not change global random state",
+    "test_selected_values_are_distinct": "Selected initial values are distinct",
+    "test_invalid_k_is_rejected": "Invalid cluster counts are rejected",
+    "test_different_seeds_can_change_selection": "Different seeds can change the selection"
+  },
   "public_dir": "repo",
   "hidden_tests_dir": "hidden_tests",
   "grader": {
@@ -12,4 +19,3 @@
     "timeout_seconds": 30
   }
 }
-

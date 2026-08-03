@@ -5,6 +5,13 @@
   "failure_class": "train-serve-skew",
   "difficulty": "introductory",
   "description": "Repair a standardization pipeline that silently refits preprocessing statistics on each inference batch.",
+  "checks": {
+    "test_inference_uses_training_statistics": "Inference uses statistics learned during training",
+    "test_same_row_is_batch_invariant": "A row receives the same transform in every inference batch",
+    "test_constant_feature_uses_unit_scale": "Constant training features use a safe unit scale",
+    "test_inputs_and_stats_are_not_mutated": "Inference does not mutate inputs or stored statistics",
+    "test_duplicate_and_missing_features_fail": "Missing and duplicate features fail clearly"
+  },
   "public_dir": "repo",
   "hidden_tests_dir": "hidden_tests",
   "grader": {
@@ -12,4 +19,3 @@
     "timeout_seconds": 30
   }
 }
-
