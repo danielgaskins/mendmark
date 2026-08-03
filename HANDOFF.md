@@ -6,7 +6,7 @@ Repository: <https://github.com/danielgaskins/mendmark>
 
 Current release: `0.3.0`
 
-Verified main commit at handoff: `618d352`
+Verified implementation baseline: `618d352`
 
 ## Read this first
 
