@@ -3,6 +3,25 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
+## 0.4.1 - 2026-08-03
+
+### Added
+
+- A clean-wheel assurance journey that exercises CLI help, version reporting,
+  packaged schemas, installed tasks, and a complete JSON audit outside the
+  source checkout.
+- Privacy canaries across console, JSON, JUnit, and SARIF output.
+- Determinism, actionable-error, and failed-baseline-preservation contracts.
+- A dedicated distribution-assurance GitHub Actions job.
+- SSH-signed commits and release tags, signed-tag verification before release
+  builds, protected `main`, and immutable future GitHub releases.
+- `mendmark --version` for quick installation diagnosis.
+
+### Compatibility
+
+- The report, baseline, suite, and evaluator protocol schema versions remain
+  `1.0`; no existing CLI command or Python API was removed.
+
 ## 0.4.0 - 2026-08-03
 
 ### Added

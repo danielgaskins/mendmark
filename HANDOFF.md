@@ -4,7 +4,9 @@ Last updated: August 3, 2026
 
 Repository: <https://github.com/danielgaskins/mendmark>
 
-Current stable release: `0.4.0`
+Current development release: `0.4.1`
+
+Latest published stable release: `0.4.0`
 
 0.4 implementation baseline: commit `eb0d5efabb50cb46083b945ef9f96edbab667b26`
 
@@ -268,7 +270,7 @@ mendmark audit examples/order_agent_suite.py \
 Expected current result:
 
 ```text
-37 passed
+46 passed
 
 Mendmark agent-eval audit
 Cases: 1
@@ -290,10 +292,12 @@ mendmark audit-json examples/order_agent_suite.json \
 Also verify the package builds:
 
 ```bash
-python -m pip wheel . --no-deps --wheel-dir /tmp/mendmark-dist
+python -m build --wheel
+python scripts/assure_distribution.py dist/*.whl --project-root .
 ```
 
-GitHub Actions runs both the test suite and the example mutation audit.
+GitHub Actions runs the test suite, both example mutation audits, and the
+clean-wheel distribution assurance journey.
 
 ## Important files
 
@@ -312,8 +316,11 @@ GitHub Actions runs both the test suite and the example mutation audit.
 | `examples/order_agent_suite.py` | Offline working example |
 | `examples/order_agent_baseline.json` | Accepted example baseline |
 | `docs/agent-mutation-audits.md` | Technical explanation and interpretation |
+| `docs/assurance.md` | User-level privacy, determinism, error, and wheel contracts |
 | `docs/product.md` | Commercial thesis, product surfaces, pricing hypothesis |
 | `docs/evaluation-card.md` | Original ML integrity pack limitations |
+| `tests/test_user_assurance.py` | End-to-end user assurance regression suite |
+| `scripts/assure_distribution.py` | Clean-wheel first-use journey |
 | `.github/workflows/tests.yml` | Tests and dogfooded mutation audit |
 | `.github/workflows/release.yml` | Trusted TestPyPI/PyPI publishing and verification |
 
@@ -356,7 +363,7 @@ These statements are accurate:
 - It supports validated custom mutations, JUnit, SARIF, and changed-tool audits.
 - It supports mutation cost ceilings and Sigstore-backed artifact signatures.
 - Its included offline example catches 13 of 13 generated faults.
-- The test suite currently contains 37 passing tests.
+- The test suite currently contains 46 passing tests.
 - Version 0.4.0 is published to PyPI through a protected Trusted Publishing
   workflow with PyPI-hosted provenance attestations.
 - Future releases require a signed tag from the repository's approved SSH

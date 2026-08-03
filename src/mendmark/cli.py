@@ -70,6 +70,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="mendmark",
         description="Mutation-test agent evals and grade ML repair tasks.",
     )
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     parser.add_argument("--tasks-root", default="tasks", help="task directory")
     subparsers = parser.add_subparsers(dest="command", required=True)
 

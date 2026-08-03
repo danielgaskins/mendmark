@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from mendmark import __version__
 from mendmark.cli import main
 from mendmark.json_adapter import JsonAdapterError, load_json_suite
 
@@ -33,7 +34,7 @@ def test_json_suite_runs_complete_offline_audit(tmp_path: Path) -> None:
     assert report["summary"]["mutants"] == 13
     assert report["summary"]["killed"] == 13
     assert report["provenance"]["adapter"] == "json-command"
-    assert report["provenance"]["mendmark_version"] == "0.4.0"
+    assert report["provenance"]["mendmark_version"] == __version__
     assert report["provenance"]["policy_digest"].startswith("sha256:")
     assert "Refund order 104" not in str(report)
     assert "order-104" not in str(report)

@@ -176,6 +176,7 @@ mendmark verify-signature mendmark-report.json \
 See [artifact signing](https://github.com/danielgaskins/mendmark/blob/main/docs/signing.md),
 the [compatibility policy](https://github.com/danielgaskins/mendmark/blob/main/docs/compatibility.md),
 the [engine benchmark](https://github.com/danielgaskins/mendmark/blob/main/docs/benchmark.md),
+the [user assurance contracts](https://github.com/danielgaskins/mendmark/blob/main/docs/assurance.md),
 and the packaged report and baseline JSON Schemas.
 
 ## Tool rollout checks
