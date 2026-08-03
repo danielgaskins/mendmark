@@ -4,33 +4,43 @@ Last updated: August 3, 2026
 
 Repository: <https://github.com/danielgaskins/mendmark>
 
-Current development release: `0.4.2`
-
-Latest published stable release: `0.4.0`
+Current stable release: `0.4.2`
 
 0.4 implementation baseline: commit `eb0d5efabb50cb46083b945ef9f96edbab667b26`
 
+0.4.2 assurance release baseline: commit `1834e8588e4ec5b64317f8f0640be8c8cafc6a9a`
+
 ## Release status
 
-Version 0.4.0 is published as `mendmark-evals` on PyPI and TestPyPI. The
-production release was built from the `v0.4.0` annotated tag through the
+Version 0.4.2 is published as `mendmark-evals` on PyPI and TestPyPI. The
+production release was built from the signed `v0.4.2` annotated tag through the
 protected `pypi` GitHub environment and PyPI Trusted Publishing. PyPI exposes a
 provenance attestation for both the wheel and source distribution identifying
-`danielgaskins/mendmark`, `release.yml`, and the `pypi` environment.
+`danielgaskins/mendmark`, `release.yml`, and the `pypi` environment. A separate
+clean environment installed the public PyPI wheel and completed the 13-of-13
+JSON audit before the release workflow passed.
 
 The repository now uses SSH signatures for commits and tags. GitHub has the
 maintainer public key registered as a signing key, `.github/allowed_signers`
 defines the repository verification identity, and `release.yml` rejects
-unsigned or untrusted future release tags before building. The already-published
+unsigned or untrusted release tags before building. The already-published
 `v0.4.0` tag remains an unsigned historical exception because rewriting a public
 release tag would invalidate consumers' existing reference; its distributions
 retain PyPI provenance attestations.
 
 GitHub branch protection requires signed commits on `main`, including for
 administrators, and rejects force-pushes, deletion, and non-linear history.
-Repository-level immutable releases are enabled for future releases. GitHub does
-not apply that setting retroactively, so the existing 0.4.0 release remains the
-documented historical exception.
+Repository-level immutable releases are enabled. The 0.4.2 release is immutable.
+GitHub does not apply that setting retroactively, so the existing 0.4.0 release
+remains the documented historical exception.
+
+Version 0.4.1 was successfully staged and verified on TestPyPI, but its
+production workflow stopped before building because the initial signed-tag
+check received a dereferenced commit from checkout. Nothing was published to
+production PyPI for 0.4.1. Version 0.4.2 explicitly fetches the annotated tag
+object, verifies its SSH signature and target commit, and is the production
+release that supersedes it. The failed 0.4.1 run demonstrated that the release
+guard fails closed.
 
 Release verification completed on August 3, 2026:
 
@@ -42,9 +52,10 @@ Release verification completed on August 3, 2026:
 
 Release links:
 
-- <https://github.com/danielgaskins/mendmark/releases/tag/v0.4.0>
-- <https://pypi.org/project/mendmark-evals/0.4.0/>
-- <https://test.pypi.org/project/mendmark-evals/0.4.0/>
+- <https://github.com/danielgaskins/mendmark/releases/tag/v0.4.2>
+- <https://pypi.org/project/mendmark-evals/0.4.2/>
+- <https://test.pypi.org/project/mendmark-evals/0.4.2/>
+- <https://github.com/danielgaskins/mendmark/actions/runs/30844304533>
 
 ## Read this first
 
@@ -364,9 +375,10 @@ These statements are accurate:
 - It supports mutation cost ceilings and Sigstore-backed artifact signatures.
 - Its included offline example catches 13 of 13 generated faults.
 - The test suite currently contains 46 passing tests.
-- Version 0.4.0 is published to PyPI through a protected Trusted Publishing
-  workflow with PyPI-hosted provenance attestations.
-- Future releases require a signed tag from the repository's approved SSH
+- Version 0.4.2 is published to PyPI through a protected Trusted Publishing
+  workflow with PyPI-hosted provenance attestations for its wheel and source
+  distribution.
+- Releases require a signed tag from the repository's approved SSH
   signing identity before any package build or publication job runs.
 
 ## Claims that are not yet supportable
