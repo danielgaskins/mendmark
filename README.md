@@ -1,146 +1,172 @@
 # Mendmark
 
-Mendmark checks whether a coding agent repaired a machine-learning system
-without breaking the experiment that system was meant to run.
+**Mutation testing for agent evals.**
 
-A patch can make every visible test pass while leaking labels, fitting
-preprocessing on inference data, changing the scoring rule, or contaminating
-global state. Mendmark gives each repair task a stated contract and a hidden,
-deterministic grader. It runs the submitted workspace in isolation and records
-the exact code that was graded.
-
-## Why this exists
-
-Output and trace evaluators answer important questions about an agent:
-
-- Did it complete the task?
-- Did it call the right tools?
-- Was its final answer relevant and well supported?
-
-Code-changing agents create another problem. The final answer can sound right
-and the public tests can pass while the edited repository no longer measures
-what its owner intended. Mendmark checks the repository itself after the agent
-finishes.
-
-Mendmark is designed to run beside [DeepEval](https://github.com/confident-ai/deepeval),
-not replace it. DeepEval can score the agent's output, trace, plan, and tool use.
-Mendmark adds a deterministic experiment-integrity result to that evaluation.
+Your agent tests may all pass and still miss a broken tool call. Mendmark checks
+the tests themselves. It makes controlled changes to passing agent traces, runs
+your existing evaluators again, and reports which failures they caught.
 
 ```text
-agent request and trace  ->  DeepEval metrics
-edited ML repository     ->  Mendmark hidden grader
-                         ->  one CI report
+passing agent case
+    -> remove a required tool call
+    -> change a tool argument
+    -> corrupt a tool result
+    -> repeat a side effect
+    -> reorder the trace
+    -> add an undeclared tool
+    -> hide a tool failure behind a success message
+    -> damage the final response
+    -> run the same evals again
+    -> fail CI when a serious fault survives
 ```
 
-## What it catches
+The result is a mutation kill rate. A killed mutation is a planted fault that
+your evals detected. A surviving mutation is a specific blind spot you can fix.
 
-| Task | Integrity failure |
-| --- | --- |
-| `group-leakage-001` | Repeated entities cross the train/test boundary |
-| `metric-aggregation-001` | Frequently retried tasks dominate the headline score |
-| `reproducible-initialization-001` | Seeded initialization mutates inputs and global RNG state |
-| `temporal-label-leakage-001` | Training consumes labels unavailable at the historical cutoff |
-| `train-serve-skew-001` | Inference silently refits preprocessing statistics |
+## What teams get
 
-Every checked-in baseline must fail its hidden grader. Every reference repair
-must pass. The framework test suite verifies both conditions across the complete
-task set.
+- A direct test of whether agent evals catch realistic failures.
+- Per-tool mutation coverage for every declared tool.
+- A warning when a new or changed tool has no eval coverage.
+- Regression detection when an eval stops catching a fault it caught before.
+- A JSON report that does not store prompts, tool arguments, or tool outputs.
+- CI release gates for kill rate, critical survivors, untested tools, and
+  regressions.
+- A DeepEval adapter today, with a framework-neutral mutation engine underneath.
 
 ## Quick start
 
-Mendmark requires Linux and Python 3.10 or newer. Isolated grading also requires
-Bubblewrap and a host that permits unprivileged user namespaces.
+Mendmark requires Python 3.10 or newer.
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -e .
-
-mendmark tasks
-mendmark prepare group-leakage-001 --operator "local-run"
-```
-
-The prepare command prints a run directory. Give its `workspace/` directory to
-the coding agent. Grade the edited workspace when the agent finishes:
-
-```bash
-mendmark grade runs/<run-id>
-mendmark show runs/<run-id>
-```
-
-The default grader uses Bubblewrap with networking disabled. For framework
-development on a trusted repository, `--runtime local` bypasses isolation. The
-result is marked `isolated: false` and should not be used as benchmark evidence.
-
-## DeepEval integration
-
-Install the optional integration:
-
-```bash
 pip install -e '.[deepeval]'
+
+mendmark audit examples/order_agent_suite.py \
+  --output mendmark-report.json \
+  --write-baseline
 ```
 
-Add the Mendmark run directory to a DeepEval test case and include the metric:
-
-```python
-from deepeval import assert_test
-from deepeval.test_case import LLMTestCase
-from mendmark.deepeval import MendmarkIntegrityMetric
-
-test_case = LLMTestCase(
-    input="Repair the group leakage in this evaluation split.",
-    actual_output="The coding agent completed its repair.",
-    metadata={"mendmark_run_dir": "runs/<run-id>"},
-)
-
-assert_test(
-    test_case,
-    [MendmarkIntegrityMetric(tasks_root="tasks")],
-    run_async=False,
-)
-```
-
-DeepEval records a score of `1.0` when the hidden integrity contract passes and
-`0.0` when it fails. Sandbox failures raise an error rather than being counted
-as agent failures. See [the integration guide](docs/deepeval.md) for a complete
-example.
-
-## Trust model
-
-The public workspace never contains hidden tests. Grading copies the submitted
-workspace into a temporary directory and adds the hidden tests only to that copy.
-Run manifests record:
-
-- Task and framework versions.
-- Initial and final workspace digests.
-- Grader command and runtime.
-- Raw grader output.
-- Duration, timeout, isolation, and infrastructure status.
-
-The default Bubblewrap sandbox has no network namespace, a read-only host
-runtime, a fresh `/tmp`, and write access only to the temporary workspace. This
-is suitable for controlled benchmark tasks. It is not a hardened service for
-arbitrary hostile submissions. A hosted runner should use disposable VMs or an
-equivalent boundary.
-
-## Project layout
+The included refund-agent example produces 13 controlled faults. Its evals must
+catch every one before the gate passes.
 
 ```text
-src/mendmark/                  Runner, task schema, CLI, and integrations
-tasks/<task-id>/task.json      Public task metadata
-tasks/<task-id>/repo/          Workspace copied for the agent
-tasks/<task-id>/hidden_tests/  Deterministic integrity contract
-tasks/<task-id>/reference/     Author-only reference repair
-tests/                         Framework and end-to-end tests
-runs/                          Local run artifacts, ignored by Git
+Mendmark agent-eval audit
+Cases: 1
+Mutations: 13  Killed: 13  Survived: 0  Errors: 0
+Mutation kill rate: 100.0%
+New tools: lookup_order, refund_order
+Gate: PASS
 ```
 
-## Present limits
+Run the same command in CI without `--write-baseline`. Mendmark compares the
+current tool schemas and mutation results with the last accepted baseline.
 
-Mendmark currently contains five small, hand-authored development tasks. The
-checked-in hidden tests are visible to repository readers, so this release is a
-framework demonstration rather than a protected model leaderboard. It does not
-yet run agents, capture trajectories, repeat trials, or report cost and latency.
+## Define a suite
 
-See [the evaluation card](docs/evaluation-card.md) for the validity controls,
-known limitations, and publication gate.
+A suite is a trusted local Python file. It exports three things:
+
+```python
+from deepeval.metrics import ToolCorrectnessMetric
+from deepeval.test_case import LLMTestCase, ToolCall
+
+TOOLS = [
+    {
+        "name": "refund_order",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": {"type": "string"},
+                "amount": {"type": "number"},
+            },
+            "required": ["order_id", "amount"],
+        },
+        "side_effecting": True,
+    }
+]
+
+MENDMARK_POLICY = {
+    "minimum_kill_rate": 0.9,
+    "fail_on_critical_survivor": True,
+    "fail_on_untested_tools": True,
+    "fail_on_tool_contract_issues": True,
+    "fail_on_regression": True,
+}
+
+
+def get_metrics():
+    return [ToolCorrectnessMetric(strict_mode=True)]
+
+
+def get_cases():
+    refund = ToolCall(
+        name="refund_order",
+        input_parameters={"order_id": "104", "amount": 29.99},
+        output={"status": "accepted"},
+    )
+    return [
+        LLMTestCase(
+            name="refund-order",
+            input="Refund order 104 in full.",
+            actual_output="The refund was accepted.",
+            expected_output="The refund was accepted.",
+            tools_called=[refund],
+            expected_tools=[refund],
+        )
+    ]
+```
+
+`get_metrics()` must return fresh metric instances on every call. Metric names
+must be unique. Mendmark reruns those metrics against the original case and each
+mutated copy.
+
+See [the complete example](examples/order_agent_suite.py) and the
+[mutation audit guide](docs/agent-mutation-audits.md).
+
+## Tool rollout checks
+
+Mendmark hashes each declared tool's name, schema, description, and side-effect
+flag. The baseline lets it answer four concrete questions in a pull request:
+
+1. Was a tool added?
+2. Did its contract change?
+3. Does at least one eval exercise it?
+4. Do those evals catch faults in its calls and results?
+
+Mendmark also checks required arguments and basic JSON Schema types in the
+actual and expected traces. Reports identify the case, tool, field, and problem
+without storing the argument value.
+
+This makes a tool launch visible before it reaches production. It does not prove
+the tool is safe. It shows whether the team's current evals can recognize the
+failures Mendmark introduced.
+
+## Security and privacy
+
+The suite file is executable Python. Only run suites from code you trust.
+
+Mendmark's JSON report stores case IDs, operator names, severities, metric names,
+statuses, and tool schema digests. It does not store prompts, expected answers,
+tool arguments, or tool outputs. Teams can run the engine inside their own CI
+boundary and publish only the report.
+
+## Existing ML integrity pack
+
+Mendmark started as a benchmark for coding agents that repair ML pipelines. That
+work remains available through `mendmark prepare`, `mendmark grade`, and the
+`MendmarkIntegrityMetric` DeepEval adapter. It checks failures such as label
+leakage, train-serve skew, invalid metric aggregation, and broken
+reproducibility.
+
+The ML pack is now one specialized use of the broader idea. An evaluator should
+be tested against known bad outcomes before its score is trusted.
+
+See [the DeepEval guide](docs/deepeval.md) and the
+[ML evaluation card](docs/evaluation-card.md).
+
+## Current boundary
+
+Version 0.3 is a local, open-source engine. It does not yet provide a hosted
+dashboard, team accounts, remote trace ingestion, or a secrets service. The
+planned control plane is described in [the product design](docs/product.md).

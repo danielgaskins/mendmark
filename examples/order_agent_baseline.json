@@ -1,0 +1,22 @@
+{
+  "mutations": {
+    "refund-paid-order:recovery.false_success:0-lookup_order": "killed",
+    "refund-paid-order:recovery.false_success:1-refund_order": "killed",
+    "refund-paid-order:response.omitted:final": "killed",
+    "refund-paid-order:response.replaced:final": "killed",
+    "refund-paid-order:tool.arguments_changed:0-lookup_order": "killed",
+    "refund-paid-order:tool.arguments_changed:1-refund_order": "killed",
+    "refund-paid-order:tool.order_reversed:trace": "killed",
+    "refund-paid-order:tool.output_corrupted:0-lookup_order": "killed",
+    "refund-paid-order:tool.output_corrupted:1-refund_order": "killed",
+    "refund-paid-order:tool.removed:0-lookup_order": "killed",
+    "refund-paid-order:tool.removed:1-refund_order": "killed",
+    "refund-paid-order:tool.side_effect_duplicated:1-refund_order": "killed",
+    "refund-paid-order:tool.unknown_added:mendmark_undeclared_tool": "killed"
+  },
+  "schema_version": "1.0",
+  "tools": {
+    "lookup_order": "sha256:43a29643b8d195bb9522fad5a022d0e61231a2040e387367da013ecfe3f68585",
+    "refund_order": "sha256:2463f2a7c36aeeb6dcaea521f603ea3a170f0192ee0b74af9b66bc555efc40ae"
+  }
+}

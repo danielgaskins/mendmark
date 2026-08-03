@@ -1,86 +1,66 @@
-# Using Mendmark with DeepEval
+# DeepEval integration
 
-DeepEval evaluates an agent's response, trace, plan, and tool use. Mendmark
-checks the machine-learning repository left behind by a code-changing agent.
-The two results answer different questions:
+Mendmark uses DeepEval metrics as the test suite under test. The mutation engine
+changes a passing `LLMTestCase`, then asks the same metrics to score it again.
 
-| Question | Evaluator |
-| --- | --- |
-| Did the agent complete the requested task? | DeepEval task-completion metric |
-| Did it select and call tools correctly? | DeepEval tool metrics |
-| Does the edited repository preserve the experiment contract? | Mendmark integrity metric |
+## Agent-eval audit
 
-## Install
+Install the optional adapter:
 
 ```bash
 pip install 'mendmark-evals[deepeval]'
 ```
 
-For a repository checkout:
+Create a trusted Python suite with `TOOLS`, `get_cases()`, and `get_metrics()`.
+Then run:
 
 ```bash
-pip install -e '.[deepeval]'
+mendmark audit evals/mendmark_suite.py \
+  --baseline .mendmark-baseline.json \
+  --output mendmark-report.json
 ```
 
-## Prepare and run the coding agent
+`get_metrics()` is a factory. It must return fresh metric objects because
+DeepEval metrics store their latest score, reason, success state, and error.
+Metric names must be unique within the suite.
 
-```bash
-RUN_DIR=$(mendmark prepare group-leakage-001 --operator ci)
+The adapter currently supports the standard `LLMTestCase` fields used for agent
+tool evaluation:
 
-# Point your coding agent at "$RUN_DIR/workspace".
-```
+- `input`
+- `actual_output`
+- `expected_output`
+- `tools_called`
+- `expected_tools`
+- `metadata`
+- `tags`
 
-Mendmark does not require a particular agent framework. The agent only needs
-permission to edit the prepared workspace.
+Use `metadata["mendmark_case_id"]` when you need a stable ID that differs from
+the DeepEval case name.
 
-## Add the integrity result to DeepEval
+## Repository-integrity metric
+
+The original Mendmark ML repair pack remains usable as one DeepEval custom
+metric:
 
 ```python
 from deepeval import assert_test
-from deepeval.metrics import TaskCompletionMetric
 from deepeval.test_case import LLMTestCase
 from mendmark.deepeval import MendmarkIntegrityMetric
 
+test_case = LLMTestCase(
+    input="Repair the group leakage in this evaluation split.",
+    actual_output="The coding agent completed its repair.",
+    metadata={"mendmark_run_dir": "runs/<run-id>"},
+)
 
-def test_ml_repair() -> None:
-    test_case = LLMTestCase(
-        input="Repair the group leakage in this evaluation split.",
-        actual_output="The coding agent completed its repair.",
-        metadata={
-            "mendmark_run_dir": "runs/<run-id>",
-        },
-    )
-
-    assert_test(
-        test_case,
-        metrics=[
-            TaskCompletionMetric(),
-            MendmarkIntegrityMetric(tasks_root="tasks"),
-        ],
-        run_async=False,
-    )
+assert_test(
+    test_case,
+    [MendmarkIntegrityMetric(tasks_root="tasks")],
+    run_async=False,
+)
 ```
 
-`MendmarkIntegrityMetric` loads the task from the run manifest and executes the
-hidden grader. It returns:
-
-- `1.0` when the integrity contract passes.
-- `0.0` when the contract fails.
-- An error when the grader cannot create its requested sandbox.
-
-The metric defaults to Bubblewrap isolation. Use `runtime="local"` only for
-tests against code you trust:
-
-```python
-MendmarkIntegrityMetric(tasks_root="tasks", runtime="local")
-```
-
-## Why the score is binary
-
-The current tasks encode critical invariants. A train/test split either leaks an
-entity or it does not. Inference either reuses training statistics or it refits
-them. Averaging these failures into a soft score can hide a broken experiment.
-
-Future task families may expose several separately named invariants. Critical
-invariants should still act as release gates even when a report includes a
-broader aggregate score.
+The metric returns `1.0` when the hidden repository contract passes and `0.0`
+when it fails. A sandbox failure raises an error so infrastructure trouble is
+not counted as an agent failure.

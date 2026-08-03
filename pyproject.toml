@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mendmark-evals"
-version = "0.2.0"
-description = "Deterministic integrity checks for agents that modify machine-learning systems"
+version = "0.3.0"
+description = "Mutation testing for agent evaluation suites"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
