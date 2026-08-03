@@ -29,3 +29,8 @@ The historical `v0.4.0` tag predates the signing requirement and remains an
 unsigned annotated tag. Do not force-update a published release tag to retrofit
 a signature. Its PyPI wheel and source distribution have Trusted Publishing
 provenance attestations. All later release tags must pass the signing gate.
+
+GitHub requires signed commits on `main` for administrators as well as other
+contributors. Force-pushes, branch deletion, and non-linear history are
+disabled. Repository-level immutable releases are enabled; GitHub applies this
+protection to future releases rather than retroactively changing 0.4.0.

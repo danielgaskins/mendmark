@@ -24,6 +24,12 @@ unsigned or untrusted future release tags before building. The already-published
 release tag would invalidate consumers' existing reference; its distributions
 retain PyPI provenance attestations.
 
+GitHub branch protection requires signed commits on `main`, including for
+administrators, and rejects force-pushes, deletion, and non-linear history.
+Repository-level immutable releases are enabled for future releases. GitHub does
+not apply that setting retroactively, so the existing 0.4.0 release remains the
+documented historical exception.
+
 Release verification completed on August 3, 2026:
 
 - Python 3.10 and 3.13 CI passed on the release commit.
