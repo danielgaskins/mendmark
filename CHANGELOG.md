@@ -3,6 +3,15 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
+## 0.4.2 - 2026-08-03
+
+### Fixed
+
+- Fetch the annotated release-tag object explicitly in GitHub Actions before
+  signature verification. GitHub's release checkout otherwise exposes the tag
+  name as a commit ref, which correctly caused the 0.4.1 production guard to
+  stop before publication.
+
 ## 0.4.1 - 2026-08-03
 
 ### Added

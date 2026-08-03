@@ -4,7 +4,7 @@ Last updated: August 3, 2026
 
 Repository: <https://github.com/danielgaskins/mendmark>
 
-Current development release: `0.4.1`
+Current development release: `0.4.2`
 
 Latest published stable release: `0.4.0`
 
