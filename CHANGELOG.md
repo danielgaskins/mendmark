@@ -13,6 +13,7 @@ Semantic Versioning for its Python and JSON contracts.
 - Privacy canaries across console, JSON, JUnit, and SARIF output.
 - Determinism, actionable-error, and failed-baseline-preservation contracts.
 - A dedicated distribution-assurance GitHub Actions job.
+- Bounded registry-propagation retries for TestPyPI and PyPI verification.
 - SSH-signed commits and release tags, signed-tag verification before release
   builds, protected `main`, and immutable future GitHub releases.
 - `mendmark --version` for quick installation diagnosis.
