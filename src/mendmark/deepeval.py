@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 from pathlib import Path
+import sys
 from types import ModuleType
 from typing import Any, Callable
 
@@ -242,7 +243,15 @@ def _load_module(path: Path) -> ModuleType:
     if spec is None or spec.loader is None:
         raise ValueError(f"cannot load suite: {resolved}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    suite_directory = str(resolved.parent)
+    added_to_path = suite_directory not in sys.path
+    if added_to_path:
+        sys.path.insert(0, suite_directory)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if added_to_path:
+            sys.path.remove(suite_directory)
     return module
 
 

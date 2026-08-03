@@ -34,6 +34,29 @@ def test_audit_cli_writes_report_and_accepted_baseline(tmp_path: Path) -> None:
     assert set(baseline["tools"]) == {"lookup_order", "refund_order"}
 
 
+def test_weak_example_exposes_tool_trace_blind_spots(tmp_path: Path) -> None:
+    report_path = tmp_path / "weak-report.json"
+
+    result = main(
+        [
+            "audit",
+            str(PROJECT_ROOT / "examples" / "order_agent_weak_suite.py"),
+            "--output",
+            str(report_path),
+        ]
+    )
+
+    assert result == 1
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["gate"]["passed"] is False
+    assert report["summary"]["survived"] > 0
+    assert any(
+        result["operator"] == "tool.side_effect_duplicated"
+        and result["status"] == "survived"
+        for result in report["mutations"]
+    )
+
+
 def test_changed_tools_only_skips_unchanged_mutations(tmp_path: Path) -> None:
     report_path = tmp_path / "report.json"
     result = main(

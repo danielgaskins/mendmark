@@ -3,6 +3,20 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
+## Unreleased
+
+### Added
+
+- A deliberately weak refund-agent suite that demonstrates how an evaluator can
+  accept the correct final response while missing broken tool behavior.
+- A regression test proving that the weak example exposes surviving critical
+  mutations before the complete example kills them.
+
+### Fixed
+
+- Python suites can import helper modules stored beside the suite file, matching
+  normal script behavior when an audit is launched from another directory.
+
 ## 0.4.2 - 2026-08-03
 
 ### Fixed

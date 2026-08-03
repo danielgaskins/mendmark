@@ -73,6 +73,26 @@ Gate: PASS
 Run the same command in CI without `--write-baseline`. Mendmark compares the
 current tool schemas and mutation results with the last accepted baseline.
 
+## See an eval fail the test
+
+The repository also includes a deliberately weak evaluator. It checks whether
+the final sentence is correct and ignores the tool trace.
+
+```bash
+mendmark audit examples/order_agent_weak_suite.py \
+  --output /tmp/mendmark-weak-report.json
+```
+
+The original refund case passes. Mendmark then changes the refund amount,
+removes required calls, and duplicates the side effect. Many of those faults
+survive because the final sentence never changed. The command exits with a
+failed gate and names each blind spot.
+
+Run the complete `order_agent_suite.py` next. Its tool-trace evaluator checks
+the ordered calls, arguments, and results, so the same planted faults are
+caught. This before-and-after pair is the shortest demonstration of what
+Mendmark measures.
+
 ## Define a suite
 
 A suite is a trusted local Python file. It exports three things:
