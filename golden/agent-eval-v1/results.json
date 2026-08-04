@@ -1,0 +1,63 @@
+{
+  "cases": 24,
+  "contract_passed": true,
+  "dataset": "Mendmark Agent Eval Golden Set",
+  "dataset_version": "1.0.0",
+  "measured_at": "2026-08-04",
+  "measurement": "Ten complete CLI runs per evaluator profile; no warm-up run was excluded.",
+  "mendmark_version": "0.4.2",
+  "mutations": 263,
+  "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+  "profiles": {
+    "complete": {
+      "gate_passed": true,
+      "operator_statuses": {
+        "recovery.false_success": {"killed": 39},
+        "response.omitted": {"killed": 24},
+        "response.replaced": {"killed": 24},
+        "tool.arguments_changed": {"killed": 39},
+        "tool.order_reversed": {"killed": 14},
+        "tool.output_corrupted": {"killed": 39},
+        "tool.removed": {"killed": 39},
+        "tool.side_effect_duplicated": {"killed": 21},
+        "tool.unknown_added": {"killed": 24}
+      },
+      "performance": {"maximum_seconds": 0.154242, "median_seconds": 0.150952, "minimum_seconds": 0.146064, "runs": 10},
+      "summary": {"cases": 24, "critical_survivors": 0, "errors": 0, "kill_rate": 1.0, "killed": 263, "mutants": 263, "survived": 0}
+    },
+    "response-only": {
+      "gate_passed": false,
+      "operator_statuses": {
+        "recovery.false_success": {"killed": 39},
+        "response.omitted": {"killed": 24},
+        "response.replaced": {"killed": 24},
+        "tool.arguments_changed": {"survived": 39},
+        "tool.order_reversed": {"survived": 14},
+        "tool.output_corrupted": {"survived": 39},
+        "tool.removed": {"survived": 39},
+        "tool.side_effect_duplicated": {"survived": 21},
+        "tool.unknown_added": {"survived": 24}
+      },
+      "performance": {"maximum_seconds": 0.145371, "median_seconds": 0.140746, "minimum_seconds": 0.137654, "runs": 10},
+      "summary": {"cases": 24, "critical_survivors": 162, "errors": 0, "kill_rate": 0.330798, "killed": 87, "mutants": 263, "survived": 176}
+    },
+    "trace-only": {
+      "gate_passed": false,
+      "operator_statuses": {
+        "recovery.false_success": {"killed": 39},
+        "response.omitted": {"survived": 24},
+        "response.replaced": {"survived": 24},
+        "tool.arguments_changed": {"killed": 39},
+        "tool.order_reversed": {"killed": 14},
+        "tool.output_corrupted": {"killed": 39},
+        "tool.removed": {"killed": 39},
+        "tool.side_effect_duplicated": {"killed": 21},
+        "tool.unknown_added": {"killed": 24}
+      },
+      "performance": {"maximum_seconds": 0.208255, "median_seconds": 0.138994, "minimum_seconds": 0.136958, "runs": 10},
+      "summary": {"cases": 24, "critical_survivors": 0, "errors": 0, "kill_rate": 0.81749, "killed": 215, "mutants": 263, "survived": 48}
+    }
+  },
+  "python_version": "3.10.12",
+  "tools": 13
+}

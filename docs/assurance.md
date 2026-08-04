@@ -17,6 +17,8 @@ The automated assurance suite checks that:
 - Missing inputs, invalid JSON, missing evaluators, timeouts, and mutation-budget
   failures return infrastructure exit code 2 with a concise message and no
   traceback.
+- The Agent Eval Golden Set preserves the exact case corpus, mutation-ID digest,
+  applicability counts, evaluator outcomes, and gate decisions across releases.
 
 Run the unit and user-contract suite with:
 

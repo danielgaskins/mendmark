@@ -32,6 +32,7 @@ Changelog = "https://github.com/danielgaskins/mendmark/blob/main/CHANGELOG.md"
 Documentation = "https://github.com/danielgaskins/mendmark#readme"
 Security = "https://github.com/danielgaskins/mendmark/security/policy"
 Support = "https://github.com/danielgaskins/mendmark/blob/main/SUPPORT.md"
+"Golden Set" = "https://github.com/danielgaskins/mendmark/tree/main/golden/agent-eval-v1"
 
 [project.optional-dependencies]
 deepeval = ["deepeval>=4,<5"]

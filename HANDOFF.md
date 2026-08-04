@@ -215,6 +215,16 @@ Metric names must be unique.
 The included example uses deterministic DeepEval custom metrics. It requires no
 API key and makes no model calls.
 
+### Agent Eval Golden Set
+
+The versioned `golden/agent-eval-v1` corpus is the canonical agent-evaluator
+benchmark. It contains 24 reviewable cases across ten domains, 13 tool contracts,
+39 calls, and 263 applicable built-in mutations. Its complete evaluator kills
+263 of 263 mutations; trace-only kills 215; response-only kills 87 and misses 162
+critical mutations. The manifest pins suite bytes, mutation identities,
+per-operator statuses, summaries, and gate decisions. The benchmark runs offline
+through the public JSON CLI and evaluator protocol.
+
 ### Framework-neutral JSON adapter
 
 `mendmark audit-json` loads a strictly validated JSON suite and calls any local
@@ -281,7 +291,7 @@ mendmark audit examples/order_agent_suite.py \
 Expected current result:
 
 ```text
-48 passed
+50 passed
 
 Mendmark agent-eval audit
 Cases: 1
@@ -334,6 +344,8 @@ clean-wheel distribution assurance journey.
 | `docs/evaluation-card.md` | Original ML integrity pack limitations |
 | `tests/test_user_assurance.py` | End-to-end user assurance regression suite |
 | `scripts/assure_distribution.py` | Clean-wheel first-use journey |
+| `golden/agent-eval-v1/` | Canonical cases, manifest, evaluator profiles, and reference results |
+| `benchmarks/benchmark_golden_set.py` | Golden contract and performance runner |
 | `.github/workflows/tests.yml` | Tests and dogfooded mutation audit |
 | `.github/workflows/security.yml` | Dependency audit, review gate, and CycloneDX SBOM generation |
 | `.github/workflows/release.yml` | Trusted TestPyPI/PyPI publishing and verification |
@@ -377,7 +389,10 @@ These statements are accurate:
 - It supports validated custom mutations, JUnit, SARIF, and changed-tool audits.
 - It supports mutation cost ceilings and Sigstore-backed artifact signatures.
 - Its included offline example catches 13 of 13 generated faults.
-- The test suite currently contains 48 passing tests.
+- The test suite currently contains 50 passing tests.
+- The Agent Eval Golden Set contains 24 cases and 263 pinned mutations; its
+  complete evaluator kills all 263 while the response-only profile misses 162
+  critical mutations.
 - Version 0.4.2 is published to PyPI through a protected Trusted Publishing
   workflow with PyPI-hosted provenance attestations for its wheel and source
   distribution.
@@ -463,7 +478,8 @@ rather than adding adapters speculatively.
 - Run five to ten real suites through the JSON boundary and measure audit time,
   mutation usefulness, evaluator cost, and report size.
 - Use `docs/pilot-guide.md` and the pilot issue form to recruit and onboard teams.
-- Use the included benchmark and `--maximum-mutants` to establish cost ceilings.
+- Use the golden set, engine scaling benchmark, and `--maximum-mutants` to
+  establish behavioral and cost baselines.
 - Add bounded parallel evaluation only if pilot data shows evaluator execution,
   rather than model calls, is a material bottleneck.
 

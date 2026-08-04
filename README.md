@@ -49,6 +49,33 @@ arguments, results, and final response. It catches all 13 faults.
 - Source, suite, CI, and policy provenance with packaged report schemas.
 - Sigstore Cosign signing and exact-identity verification for audit artifacts.
 
+## Agent Eval Golden Set
+
+The [Mendmark Agent Eval Golden Set](golden/agent-eval-v1/) is the canonical,
+versioned benchmark for the agent-mutation engine. Its 24 reviewable cases cover
+13 tools, 39 calls, ten domains, and zero- through three-call workflows. All 263
+applicable built-in mutations and their expected outcomes are pinned by corpus,
+mutation-ID, summary, and per-operator digests.
+
+| Evaluator profile | Killed | Survived | Kill rate |
+| --- | ---: | ---: | ---: |
+| Complete trace and outcome | 263 | 0 | 100.000% |
+| Trace only | 215 | 48 | 81.749% |
+| Response only | 87 | 176 | 33.080% |
+
+The response-only profile leaves 162 critical tool-behavior mutations
+undetected. The complete profile catches every mutation in the golden set. Run
+the complete benchmark locally, without model or network calls:
+
+```bash
+python benchmarks/benchmark_golden_set.py
+```
+
+The [manifest](golden/agent-eval-v1/manifest.json),
+[case suite](golden/agent-eval-v1/suite.json), evaluator profiles, methodology,
+and [reference performance](golden/agent-eval-v1/results.json) are checked in for
+direct review and reproduction.
+
 ## Quick start
 
 Mendmark requires Python 3.10 or newer.

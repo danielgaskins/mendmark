@@ -13,6 +13,9 @@ Semantic Versioning for its Python and JSON contracts.
   mutations before the complete example kills them.
 - A tested Rubric evaluator example that connects Rubric metrics through the
   framework-neutral JSON protocol.
+- The Mendmark Agent Eval Golden Set: 24 deterministic cases, 13 tool contracts,
+  263 built-in mutations, complete/trace-only/response-only evaluator profiles,
+  pinned per-operator outcomes, and reproducible reference performance.
 
 ### Fixed
 

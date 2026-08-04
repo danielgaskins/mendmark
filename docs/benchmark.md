@@ -1,4 +1,34 @@
-# Engine benchmark
+# Benchmarks
+
+## Agent Eval Golden Set
+
+The [Mendmark Agent Eval Golden Set](../golden/agent-eval-v1/) is the canonical
+behavioral benchmark. It pins 24 cases, 13 tools, 263 mutations, and the expected
+per-operator results for complete, trace-only, and response-only evaluator
+profiles.
+
+On the August 4, 2026 reference workstation, ten full CLI runs per profile had
+the following median wall times:
+
+| Profile | Median | Result |
+| --- | ---: | ---: |
+| Complete | 0.151 s | 263/263 killed |
+| Trace only | 0.139 s | 215/263 killed |
+| Response only | 0.141 s | 87/263 killed |
+
+These timings include CLI startup, mutation generation, one JSON evaluator
+process, policy evaluation, and report writing. They exclude installation and
+make no model or network calls. Runtime is machine-dependent; the corpus digest,
+mutation identities, outcome counts, kill rates, and gate decisions are the
+golden contract.
+
+Reproduce and verify it with:
+
+```bash
+python benchmarks/benchmark_golden_set.py --repeats 10
+```
+
+## Engine scaling benchmark
 
 This benchmark measures Mendmark's in-process mutation and report overhead. It
 does not measure an external evaluator, model latency, or provider cost.

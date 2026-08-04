@@ -105,6 +105,8 @@ do not require raw trace ingestion.
 - Source/CI provenance, mutation cost ceilings, and public report schemas.
 - Sigstore Cosign signing and verification for reports and baselines.
 - Existing deterministic ML integrity pack.
+- Versioned Agent Eval Golden Set with 24 cases, 263 mutations, three evaluator
+  profiles, and pinned per-operator outcomes.
 
 ### Next
 

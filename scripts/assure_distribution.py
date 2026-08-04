@@ -87,6 +87,9 @@ def main() -> int:
                 ("scripts", "assure_distribution.py"),
                 (".github", "allowed_signers"),
                 ("docs", "assurance.md"),
+                ("golden", "agent-eval-v1", "manifest.json"),
+                ("golden", "agent-eval-v1", "suite.json"),
+                ("golden", "agent-eval-v1", "results.json"),
             }
             missing = sorted(required - members)
             if missing:
