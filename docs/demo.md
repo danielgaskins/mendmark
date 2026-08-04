@@ -1,10 +1,7 @@
 # Mendmark demonstration
 
-## Current status
-
-- The two-minute silent cut is published at
-  [`docs/assets/mendmark-weak-eval-demo.mp4`](assets/mendmark-weak-eval-demo.mp4).
-- The voice-over still needs to be recorded, synchronized, and published.
+The narrated two-minute demonstration is published at
+[`docs/assets/mendmark-weak-eval-demo.mp4`](assets/mendmark-weak-eval-demo.mp4).
 
 ## What the demonstration shows
 
