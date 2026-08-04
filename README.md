@@ -1,80 +1,32 @@
-# Mendmark
+<div align="center">
+  <h1>Mendmark</h1>
+  <p><strong>Mutation testing for agent evals.</strong></p>
+  <p>Find the broken tool calls your passing tests still accept.</p>
+  <p>
+    <a href="https://github.com/danielgaskins/mendmark/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/danielgaskins/mendmark/actions/workflows/tests.yml/badge.svg"></a>
+    <a href="https://github.com/danielgaskins/mendmark/actions/workflows/security.yml"><img alt="Security" src="https://github.com/danielgaskins/mendmark/actions/workflows/security.yml/badge.svg"></a>
+    <a href="https://pypi.org/project/mendmark-evals/"><img alt="PyPI" src="https://img.shields.io/pypi/v/mendmark-evals?color=2563eb"></a>
+    <img alt="Python 3.10–3.13" src="https://img.shields.io/badge/python-3.10%E2%80%933.13-3776ab">
+    <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-0f766e"></a>
+  </p>
+  <p>
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#agent-eval-golden-set">Golden set</a> ·
+    <a href="docs/agent-mutation-audits.md">How it works</a> ·
+    <a href="docs/pilot-guide.md">Run a pilot</a>
+  </p>
+</div>
 
-**Mutation testing for agent evals.**
+<p align="center">
+  <img src="https://raw.githubusercontent.com/danielgaskins/mendmark/main/docs/assets/mendmark-readme-hero.svg" width="100%" alt="Mendmark changes one part of a passing agent trace, reruns existing evaluators, and identifies killed faults and surviving blind spots.">
+</p>
 
-Your agent tests may all pass and still miss a broken tool call. Mendmark checks
-the tests themselves. It makes controlled changes to passing agent traces, runs
-your existing evaluators again, and reports which failures they caught.
+Your agent tests can all pass and still miss a broken tool call. Mendmark tests
+the tests themselves: it plants one controlled fault, runs the same evaluators
+again, and turns every survivor into a concrete blind spot to fix.
 
-```text
-passing agent case
-    -> remove a required tool call
-    -> change a tool argument
-    -> corrupt a tool result
-    -> repeat a side effect
-    -> reorder the trace
-    -> add an undeclared tool
-    -> hide a tool failure behind a success message
-    -> damage the final response
-    -> run the same evals again
-    -> fail CI when a serious fault survives
-```
-
-The result is a mutation kill rate. A killed mutation is a planted fault that
-your evals detected. A surviving mutation is a specific blind spot you can fix.
-
-## Two-minute demonstration
-
-[Watch the narrated weak-eval demonstration](docs/assets/mendmark-weak-eval-demo.mp4).
-
-A refund-agent test passes because it checks only the final sentence. Mendmark
-changes the tool trace and finds that 9 of 13 faults escape, including a wrong
-refund amount and a duplicated refund. The complete evaluator checks the calls,
-arguments, results, and final response. It catches all 13 faults.
-
-## What teams get
-
-- A direct test of whether agent evals catch realistic failures.
-- Per-tool mutation coverage for every declared tool.
-- A warning when a new or changed tool has no eval coverage.
-- Regression detection when an eval stops catching a fault it caught before.
-- A JSON report that does not store prompts, tool arguments, or tool outputs.
-- CI release gates for kill rate, critical survivors, untested tools, and
-  regressions.
-- A DeepEval adapter today, with a framework-neutral mutation engine underneath.
-- A tested Rubric example through the framework-neutral JSON protocol.
-- A validated JSON adapter for any local evaluator command.
-- JUnit and SARIF output plus changed-tool-only pull-request audits.
-- A stable plugin API for domain-specific mutation operators.
-- Source, suite, CI, and policy provenance with packaged report schemas.
-- Sigstore Cosign signing and exact-identity verification for audit artifacts.
-
-## Agent Eval Golden Set
-
-The [Mendmark Agent Eval Golden Set](golden/agent-eval-v1/) is the canonical,
-versioned benchmark for the agent-mutation engine. Its 24 reviewable cases cover
-13 tools, 39 calls, ten domains, and zero- through three-call workflows. All 263
-applicable built-in mutations and their expected outcomes are pinned by corpus,
-mutation-ID, summary, and per-operator digests.
-
-| Evaluator profile | Killed | Survived | Kill rate |
-| --- | ---: | ---: | ---: |
-| Complete trace and outcome | 263 | 0 | 100.000% |
-| Trace only | 215 | 48 | 81.749% |
-| Response only | 87 | 176 | 33.080% |
-
-The response-only profile leaves 162 critical tool-behavior mutations
-undetected. The complete profile catches every mutation in the golden set. Run
-the complete benchmark locally, without model or network calls:
-
-```bash
-python benchmarks/benchmark_golden_set.py
-```
-
-The [manifest](golden/agent-eval-v1/manifest.json),
-[case suite](golden/agent-eval-v1/suite.json), evaluator profiles, methodology,
-and [reference performance](golden/agent-eval-v1/results.json) are checked in for
-direct review and reproduction.
+> **Killed** means the eval noticed the planted fault. **Survived** means the
+> damaged case still passed. A critical survivor can fail the release gate.
 
 ## Quick start
 
@@ -82,11 +34,7 @@ Mendmark requires Python 3.10 or newer.
 
 ```bash
 pip install 'mendmark-evals[deepeval]'
-```
 
-To run the repository's deterministic example from a source checkout:
-
-```bash
 git clone https://github.com/danielgaskins/mendmark.git
 cd mendmark
 
@@ -94,9 +42,6 @@ mendmark audit examples/order_agent_suite.py \
   --output mendmark-report.json \
   --write-baseline
 ```
-
-The included refund-agent example produces 13 controlled faults. Its evals must
-catch every one before the gate passes.
 
 ```text
 Mendmark agent-eval audit
@@ -109,6 +54,62 @@ Gate: PASS
 
 Run the same command in CI without `--write-baseline`. Mendmark compares the
 current tool schemas and mutation results with the last accepted baseline.
+
+## See the blind spot in two minutes
+
+**[▶ Watch the narrated weak-eval demonstration](docs/assets/mendmark-weak-eval-demo.mp4)**
+
+A refund-agent test checks only the final sentence. Mendmark finds that 9 of 13
+faults escape—including a wrong refund amount and a duplicated refund. A
+complete evaluator checks the calls, arguments, results, and response, killing
+all 13.
+
+## Agent Eval Golden Set
+
+The [Mendmark Agent Eval Golden Set](golden/agent-eval-v1/) is the canonical,
+versioned benchmark for the mutation engine.
+
+<table>
+  <tr>
+    <td align="center"><strong>24</strong><br>reviewable cases</td>
+    <td align="center"><strong>13</strong><br>tool contracts</td>
+    <td align="center"><strong>39</strong><br>tool calls</td>
+    <td align="center"><strong>263</strong><br>pinned mutations</td>
+    <td align="center"><strong>10</strong><br>domains</td>
+  </tr>
+</table>
+
+| Evaluator profile | Killed | Survived | Kill rate |
+| --- | ---: | ---: | ---: |
+| **Complete trace and outcome** | **263** | **0** | **100.000%** |
+| Trace only | 215 | 48 | 81.749% |
+| Response only | 87 | 176 | 33.080% |
+
+The response-only profile leaves **162 critical tool-behavior mutations**
+undetected. The complete profile catches every mutation in the golden set.
+
+```bash
+python benchmarks/benchmark_golden_set.py
+```
+
+Review the [manifest](golden/agent-eval-v1/manifest.json),
+[case suite](golden/agent-eval-v1/suite.json), evaluator profiles,
+[methodology](golden/agent-eval-v1/README.md), and
+[reference performance](golden/agent-eval-v1/results.json) directly. The
+benchmark is deterministic, offline, and makes no model calls.
+
+## Built for real CI
+
+<table>
+  <tr>
+    <td width="50%"><strong>🔎 Expose evaluator blind spots</strong><br>Wrong arguments, corrupted results, reordered calls, duplicate side effects, false recovery, and damaged responses.</td>
+    <td width="50%"><strong>🧰 Fit the existing stack</strong><br>DeepEval, Rubric, or any local evaluator through a validated JSON subprocess protocol.</td>
+  </tr>
+  <tr>
+    <td width="50%"><strong>🚦 Gate tool rollouts</strong><br>Per-tool coverage, schema-change detection, accepted baselines, mutation budgets, JUnit, and SARIF.</td>
+    <td width="50%"><strong>🔐 Keep case content local</strong><br>Reports omit prompts, answers, tool arguments, and tool outputs; artifacts can be signed with Cosign.</td>
+  </tr>
+</table>
 
 ## See an eval fail the test
 
