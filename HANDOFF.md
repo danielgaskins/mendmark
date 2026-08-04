@@ -1,6 +1,6 @@
 # Mendmark product handoff
 
-Last updated: August 3, 2026
+Last updated: August 4, 2026
 
 Repository: <https://github.com/danielgaskins/mendmark>
 
@@ -281,7 +281,7 @@ mendmark audit examples/order_agent_suite.py \
 Expected current result:
 
 ```text
-46 passed
+48 passed
 
 Mendmark agent-eval audit
 Cases: 1
@@ -328,11 +328,14 @@ clean-wheel distribution assurance journey.
 | `examples/order_agent_baseline.json` | Accepted example baseline |
 | `docs/agent-mutation-audits.md` | Technical explanation and interpretation |
 | `docs/assurance.md` | User-level privacy, determinism, error, and wheel contracts |
+| `docs/threat-model.md` | Data flow, trusted-code boundary, threats, and enterprise deployment checklist |
+| `docs/reddit-launch.md` | Rules-aware design-partner feedback post and response qualification |
 | `docs/product.md` | Commercial thesis, product surfaces, pricing hypothesis |
 | `docs/evaluation-card.md` | Original ML integrity pack limitations |
 | `tests/test_user_assurance.py` | End-to-end user assurance regression suite |
 | `scripts/assure_distribution.py` | Clean-wheel first-use journey |
 | `.github/workflows/tests.yml` | Tests and dogfooded mutation audit |
+| `.github/workflows/security.yml` | Dependency audit, review gate, and CycloneDX SBOM generation |
 | `.github/workflows/release.yml` | Trusted TestPyPI/PyPI publishing and verification |
 
 ## Report data boundary
@@ -374,7 +377,7 @@ These statements are accurate:
 - It supports validated custom mutations, JUnit, SARIF, and changed-tool audits.
 - It supports mutation cost ceilings and Sigstore-backed artifact signatures.
 - Its included offline example catches 13 of 13 generated faults.
-- The test suite currently contains 46 passing tests.
+- The test suite currently contains 48 passing tests.
 - Version 0.4.2 is published to PyPI through a protected Trusted Publishing
   workflow with PyPI-hosted provenance attestations for its wheel and source
   distribution.

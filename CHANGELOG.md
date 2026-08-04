@@ -19,6 +19,14 @@ Semantic Versioning for its Python and JSON contracts.
 - Python suites can import helper modules stored beside the suite file, matching
   normal script behavior when an audit is launched from another directory.
 
+### Security
+
+- Added an explicit threat model, privacy data flow, enterprise deployment
+  checklist, and public support lifecycle.
+- Added Dependabot, pull-request dependency review, a scheduled vulnerability
+  audit of the resolved integration environment, and a reproducible CycloneDX
+  SBOM artifact.
+
 ## 0.4.2 - 2026-08-03
 
 ### Fixed

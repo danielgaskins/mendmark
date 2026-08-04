@@ -1,6 +1,7 @@
 include CHANGELOG.md
 include HANDOFF.md
 include SECURITY.md
+include SUPPORT.md
 recursive-include benchmarks *.py
 recursive-include docs *.md
 recursive-include examples *.json *.py

@@ -240,8 +240,11 @@ tool arguments, or tool outputs. Teams can run the engine inside their own CI
 boundary and publish only the report.
 
 See [SECURITY.md](https://github.com/danielgaskins/mendmark/blob/main/SECURITY.md)
-for the trusted-code boundary and private
-vulnerability reporting guidance.
+for private vulnerability reporting, the
+[threat model and deployment checklist](https://github.com/danielgaskins/mendmark/blob/main/docs/threat-model.md)
+for the complete trusted-code boundary, and
+[SUPPORT.md](https://github.com/danielgaskins/mendmark/blob/main/SUPPORT.md)
+for version and support expectations.
 
 ## Design-partner pilot
 
