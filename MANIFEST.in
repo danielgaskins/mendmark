@@ -1,5 +1,4 @@
 include CHANGELOG.md
-include HANDOFF.md
 include SECURITY.md
 include SUPPORT.md
 recursive-include benchmarks *.py

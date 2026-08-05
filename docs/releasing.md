@@ -1,6 +1,6 @@
 # Release process
 
-1. Update `CHANGELOG.md`, package versions, and the handoff.
+1. Update `CHANGELOG.md` and package versions.
 2. Run tests with provider API keys unset, both offline audits, schema tests,
    `python -m build`, and `twine check dist/*`.
 3. Push the reviewed commit and wait for the `tests` workflow.
