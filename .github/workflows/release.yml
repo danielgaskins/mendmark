@@ -9,7 +9,43 @@ permissions:
   contents: read
 
 jobs:
+  assurance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install assurance dependencies
+        run: python -m pip install --upgrade build pip-audit twine '.[deepeval,rubric,dev]'
+      - name: Run product contracts
+        run: python -m pytest
+      - name: Verify golden sets
+        run: |
+          python benchmarks/benchmark_golden_set.py
+          python benchmarks/benchmark_multi_agent_golden_set.py
+          python benchmarks/benchmark_multi_agent_golden_set_v2.py
+      - name: Enforce enterprise-scale resource budgets
+        run: python benchmarks/benchmark_enterprise.py
+      - name: Build and inspect distributions
+        run: |
+          python -m build
+          python -m twine check dist/*
+          python scripts/assure_distribution.py dist/*.whl --project-root .
+      - name: Audit the resolved product environment
+        run: |
+          python -m venv /tmp/mendmark-release-product
+          /tmp/mendmark-release-product/bin/python -m pip install --upgrade pip setuptools
+          wheel_path=$(find dist -maxdepth 1 -name '*.whl' -print -quit)
+          test -n "$wheel_path"
+          /tmp/mendmark-release-product/bin/python -m pip install "${wheel_path}[deepeval,rubric]"
+          product_site=$(/tmp/mendmark-release-product/bin/python -c \
+            'import site; print(site.getsitepackages()[0])')
+          python -m pip_audit --path "$product_site"
+
   build:
+    needs: assurance
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.package-version.outputs.version }}

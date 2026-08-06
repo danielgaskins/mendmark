@@ -5,6 +5,7 @@
   "agents": 3,
   "tools": 3,
   "events": 9,
+  "tool_calls": 3,
   "mutations": 44,
   "summary": {
     "cases": 1,

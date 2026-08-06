@@ -34,6 +34,10 @@ and fails the gate. An evaluator error does not count as a successful detection.
 | --- | --- | --- |
 | `tool.removed` | Removes one tool call | Critical |
 | `tool.arguments_changed` | Changes one argument | Critical |
+| `tool.argument_omitted` | Omits one observed argument | Critical |
+| `tool.argument_unexpected` | Adds an unexpected argument | High |
+| `tool.argument_type_changed` | Changes an argument to an incompatible type | Critical |
+| `tool.identifier_swapped` | Uses an identifier from another call | Critical |
 | `tool.output_corrupted` | Replaces a tool result with an error | Critical |
 | `tool.side_effect_duplicated` | Repeats a side-effecting call | Critical |
 | `tool.order_reversed` | Reverses a multi-tool trace | High |
@@ -53,6 +57,12 @@ and fails the gate. An evaluator error does not count as a successful detection.
 | `coordination.state_update_corrupted` | Changes a shared-state value | Critical |
 | `coordination.aggregation_dropped` | Removes a multi-branch aggregation | Critical |
 | `coordination.loop_inserted` | Inserts a delegation loop | Critical |
+| `coordination.delegation_duplicated` | Issues a delegation twice | High |
+| `coordination.result_duplicated` | Delivers a result twice | High |
+| `coordination.aggregation_premature` | Aggregates before prerequisites | Critical |
+| `coordination.state_revision_stale` | Applies a stale revision | Critical |
+| `coordination.branch_abandoned` | Abandons a delegated branch | Critical |
+| `coordination.result_request_changed` | Correlates a result to the wrong request | Critical |
 
 Each applicable operator creates a separate mutant for each tool call. That
 makes the report useful for a rollout. A team can see that its evals catch a bad

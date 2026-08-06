@@ -178,6 +178,21 @@ def _tool_contract_issues(
                 if isinstance(properties, dict):
                     for field, value in call.input_parameters.items():
                         field_schema = properties.get(field)
+                        if (
+                            field_schema is None
+                            and schema.get("additionalProperties") is False
+                        ):
+                            issues.append(
+                                {
+                                    "case_id": case.case_id,
+                                    "trace": source,
+                                    "call_index": index,
+                                    "tool_name": call.name,
+                                    "field": field,
+                                    "issue": "unexpected argument is not allowed",
+                                }
+                            )
+                            continue
                         if not isinstance(field_schema, dict):
                             continue
                         expected_type = field_schema.get("type")

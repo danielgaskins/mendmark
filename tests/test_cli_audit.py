@@ -29,8 +29,8 @@ def test_audit_cli_writes_report_and_accepted_baseline(tmp_path: Path) -> None:
     report = json.loads(report_path.read_text(encoding="utf-8"))
     baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
     assert report["gate"]["passed"] is True
-    assert report["summary"]["mutants"] == 13
-    assert len(baseline["mutations"]) == 13
+    assert report["summary"]["mutants"] == 19
+    assert len(baseline["mutations"]) == 19
     assert set(baseline["tools"]) == {"lookup_order", "refund_order"}
 
 

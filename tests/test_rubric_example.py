@@ -28,6 +28,6 @@ def test_rubric_example_runs_through_json_protocol(tmp_path: Path) -> None:
     assert result == 1
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["provenance"]["adapter"] == "json-command"
-    assert report["summary"]["mutants"] == 13
-    assert 0 < report["summary"]["killed"] < 13
+    assert report["summary"]["mutants"] == 19
+    assert 0 < report["summary"]["killed"] < 19
     assert report["summary"]["critical_survivors"] > 0

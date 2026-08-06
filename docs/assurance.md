@@ -20,12 +20,14 @@ The automated assurance suite checks that:
   traceback.
 - The Agent Eval Golden Set preserves the exact case corpus, mutation-ID digest,
   applicability counts, evaluator outcomes, and gate decisions across releases.
-- The Multi-Agent Golden Set pins agent and tool contracts, graph shape,
-  mutation identities, all 44 outcomes, and the release-gate decision.
+- Multi-Agent Golden Set v1 preserves its compact 44-mutation historical
+  contract. V2 pins six topologies, 41 events, 294 outcomes, strong and weak
+  profiles, scheduler permutations, all evaluator assets, coverage digests,
+  and the release-gate decisions.
 - Independent branches may appear in either scheduler order without creating a
   false positive; event identity and causal dependencies remain authoritative.
-- An intentionally output-only multi-agent evaluator detects just 5 of 44
-  faults. The other 39 are grouped by failure category and identify the agent,
+- An intentionally output-only v2 evaluator detects just 23 of 294 faults. The
+  other 271 are grouped by failure category and identify the agent,
   event, and tool involved without exposing their payloads.
 - Every built-in mutation changes its observed case while preserving the
   expected-output oracle, expected trace, case metadata, tags, and agent

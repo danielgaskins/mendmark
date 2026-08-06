@@ -12,7 +12,7 @@ from collections import Counter
 from pathlib import Path
 
 from mendmark.json_adapter import load_json_suite
-from mendmark.mutations import generate_mutants
+from mendmark.mutations import MULTI_AGENT_V1_MUTATIONS, generate_mutants
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -38,8 +38,26 @@ def main() -> int:
             hashlib.sha256(suite_path.read_bytes()).hexdigest(),
             manifest["suite_sha256"],
         )
+        asset_paths = {
+            "evaluator.py": evaluator_path,
+            "README.md": GOLDEN_ROOT / "README.md",
+            "suite-v2.schema.json": (
+                PROJECT_ROOT / "src/mendmark/schemas/suite-v2.schema.json"
+            ),
+            "report-v1.schema.json": (
+                PROJECT_ROOT / "src/mendmark/schemas/report-v1.schema.json"
+            ),
+        }
+        for name, expected_digest in manifest["assets"].items():
+            _expect(
+                f"{name} SHA-256",
+                hashlib.sha256(asset_paths[name].read_bytes()).hexdigest(),
+                expected_digest,
+            )
         suite = load_json_suite(suite_path)
-        mutants = generate_mutants(suite.cases, suite.tools)
+        mutants = generate_mutants(
+            suite.cases, suite.tools, MULTI_AGENT_V1_MUTATIONS
+        )
         mutation_digest = hashlib.sha256(
             "\n".join(sorted(mutant.mutant_id for mutant in mutants)).encode()
         ).hexdigest()
@@ -77,6 +95,8 @@ def main() -> int:
                 str(report_path),
                 "--suite-version",
                 manifest["version"],
+                "--mutation-profile",
+                "multi-agent-v1",
             ]
             completed = subprocess.run(
                 command,
@@ -98,6 +118,11 @@ def main() -> int:
             "gate_passed": report["gate"]["passed"],
             "contract_passed": True,
         }
+        _expect(
+            "checked-in results",
+            result,
+            json.loads((GOLDEN_ROOT / "results.json").read_text()),
+        )
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0
     except (GoldenSetError, OSError, ValueError, json.JSONDecodeError) as error:

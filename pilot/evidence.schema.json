@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mendmark.dev/schemas/pilot-evidence-v1.schema.json",
+  "title": "Privacy-safe Mendmark design-partner evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "pilot_id", "status", "organization_profile", "review"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "pilot_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"},
+    "status": {"enum": ["planned", "completed"]},
+    "organization_profile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["industry", "team_size_band", "agent_topology", "evaluator_framework"],
+      "properties": {
+        "industry": {"type": "string", "minLength": 1, "maxLength": 64},
+        "team_size_band": {"enum": ["1-10", "11-50", "51-250", "251-1000", "1000+"]},
+        "agent_topology": {"enum": ["single-agent", "multi-agent", "mixed"]},
+        "evaluator_framework": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "started_on": {"type": "string", "format": "date"},
+    "completed_on": {"type": "string", "format": "date"},
+    "measures": {
+      "type": "object", "additionalProperties": false,
+      "required": ["time_to_first_audit_minutes", "mutations_generated", "mutations_reviewed", "realistic_mutations", "equivalent_mutations", "new_blind_spots", "remediated_blind_spots", "retained_in_ci", "audit_runtime_seconds", "estimated_evaluator_cost_usd", "setup_failure_count", "friction_codes"],
+      "properties": {
+        "time_to_first_audit_minutes": {"type": "number", "minimum": 0},
+        "mutations_generated": {"type": "integer", "minimum": 0},
+        "mutations_reviewed": {"type": "integer", "minimum": 1},
+        "realistic_mutations": {"type": "integer", "minimum": 0},
+        "equivalent_mutations": {"type": "integer", "minimum": 0},
+        "new_blind_spots": {"type": "integer", "minimum": 0},
+        "remediated_blind_spots": {"type": "integer", "minimum": 0},
+        "retained_in_ci": {"type": "boolean"},
+        "audit_runtime_seconds": {"type": "number", "minimum": 0},
+        "estimated_evaluator_cost_usd": {"type": "number", "minimum": 0},
+        "setup_failure_count": {"type": "integer", "minimum": 0},
+        "friction_codes": {"type": "array", "uniqueItems": true, "items": {"enum": ["adapter", "documentation", "evaluator-cost", "performance", "policy", "privacy-review", "report-actionability", "trace-export"]}}
+      }
+    },
+    "review": {
+      "type": "object", "additionalProperties": false,
+      "required": ["no_raw_customer_content", "customer_approved_aggregation", "evaluator_owner_reviewed", "independent_reviewer_count"],
+      "properties": {
+        "no_raw_customer_content": {"const": true},
+        "customer_approved_aggregation": {"type": "boolean"},
+        "evaluator_owner_reviewed": {"type": "boolean"},
+        "independent_reviewer_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "completed"}}, "required": ["status"]},
+      "then": {"required": ["started_on", "completed_on", "measures"]}
+    }
+  ]
+}

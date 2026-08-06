@@ -1,9 +1,11 @@
 # Release process
 
 1. Update `CHANGELOG.md` and package versions.
-2. Run tests with provider API keys unset, both offline audits, schema tests,
-   `python -m build`, and `twine check dist/*`.
-3. Push the reviewed commit and wait for the `tests` workflow.
+2. Run tests with provider API keys unset, all golden contracts, the enterprise
+   benchmark, schema tests, `python -m build`, distribution assurance, dependency
+   audit, and `twine check dist/*`.
+3. Open a pull request and wait for every required test, golden, compatibility,
+   enterprise, distribution, and dependency-review check.
 4. Configure `release.yml` as a Trusted Publisher for the `testpypi` environment.
 5. Manually dispatch `release.yml`, then install the exact version from TestPyPI
    in a clean environment and run the JSON example.
@@ -21,6 +23,11 @@
    verification succeeds.
 8. Wait for PyPI trusted publishing and its provenance attestation, then verify a
    clean PyPI install.
+
+`release.yml` repeats the product contracts, all golden sets, enterprise
+budgets, dependency audit, build, metadata inspection, and isolated distribution
+journey before its build artifact can reach either publishing job. Publication
+cannot rely only on an earlier workflow result.
 
 Never add a long-lived PyPI token when Trusted Publishing is available. The
 release workflow grants `id-token: write` only to publishing jobs.

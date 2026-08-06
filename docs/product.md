@@ -97,7 +97,7 @@ do not require raw trace ingestion.
 - Native single-agent traces and multi-agent causal event graphs.
 - DeepEval suite adapter.
 - Framework-neutral JSON suite and local batch evaluator protocol.
-- Twenty-one built-in tool, response, delegation, authorization, shared-state,
+- Thirty-one built-in tool, response, delegation, authorization, shared-state,
   aggregation, causality, and termination mutation operators.
 - Validated domain-specific mutation plugins.
 - Per-tool coverage and tool schema tracking.
@@ -109,8 +109,13 @@ do not require raw trace ingestion.
 - Existing deterministic ML integrity pack.
 - Versioned Agent Eval Golden Set with 24 cases, 263 mutations, three evaluator
   profiles, and pinned per-operator outcomes.
-- Versioned Multi-Agent Golden Set with 3 agents, 9 events, 44 mutations, and
-  pinned graph-and-outcome behavior.
+- Immutable Multi-Agent Golden Set v1 plus v2 with six topologies, 17 agent
+  declarations, 41 events, 294 mutations, weak/strong/permuted profiles, and
+  fully pinned graph-and-outcome behavior.
+- Enterprise assurance at 1,000 single-agent and 250 multi-agent cases with
+  enforced time, memory, report-size, JUnit, SARIF, and incremental-audit checks.
+- A machine-validated, privacy-safe design-partner evidence rubric and utility
+  gate that cannot be satisfied by planned or unreviewed pilots.
 
 ### Next
 

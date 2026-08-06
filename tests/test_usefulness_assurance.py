@@ -38,7 +38,7 @@ def test_independent_multi_agent_event_order_is_not_a_false_positive(
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert result == 0
     assert report["gate"]["passed"] is True
-    assert report["summary"]["killed"] == report["summary"]["mutants"] == 44
+    assert report["summary"]["killed"] == report["summary"]["mutants"] == 64
 
 
 def test_output_only_multi_agent_evaluator_exposes_coordination_blind_spots(
@@ -62,21 +62,21 @@ def test_output_only_multi_agent_evaluator_exposes_coordination_blind_spots(
     assert result == 1
     assert report["summary"] == {
         "cases": 1,
-        "mutants": 44,
+        "mutants": 64,
         "killed": 5,
-        "survived": 39,
+        "survived": 59,
         "errors": 0,
-        "kill_rate": 0.113636,
-        "critical_survivors": 27,
+        "kill_rate": 0.078125,
+        "critical_survivors": 40,
     }
-    assert report["coverage"]["by_category"]["coordination"]["survived"] == 6
+    assert report["coverage"]["by_category"]["coordination"]["survived"] == 12
     assert report["coverage"]["by_category"]["causality"]["survived"] == 8
     assert report["coverage"]["by_operator"]["delegation.removed"]["survived"] == 2
     assert "Survivors by category:" in output
-    assert "coordination=6" in output
+    assert "coordination=12" in output
     assert "agent=billing" in output
     assert "event=billing-result" in output
-    assert "27 critical mutation(s) survived" in output
+    assert "40 critical mutation(s) survived" in output
 
 
 def test_built_in_mutations_are_non_noop_and_preserve_eval_oracles() -> None:

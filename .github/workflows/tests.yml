@@ -21,12 +21,26 @@ jobs:
         run: python benchmarks/benchmark_golden_set.py
       - name: Verify the Multi-Agent Golden Set
         run: python benchmarks/benchmark_multi_agent_golden_set.py
+      - name: Verify the Multi-Agent Golden Set v2
+        run: python benchmarks/benchmark_multi_agent_golden_set_v2.py
+
+  enterprise-assurance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install -e .
+      - name: Enforce enterprise-scale resource budgets
+        run: python benchmarks/benchmark_enterprise.py
 
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
@@ -56,6 +70,26 @@ jobs:
           --output /tmp/mendmark-multi-agent-report.json
       - name: Build the wheel
         run: python -m pip wheel . --no-deps --wheel-dir /tmp/mendmark-dist
+
+  integration-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dependency-profile: [minimum, latest]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - name: Install minimum supported integrations
+        if: matrix.dependency-profile == 'minimum'
+        run: python -m pip install -e '.[dev]' 'deepeval==4.0.0' 'rubric-eval==0.2.0'
+      - name: Install latest supported integrations
+        if: matrix.dependency-profile == 'latest'
+        run: python -m pip install -e '.[deepeval,rubric,dev]'
+      - run: python -m pytest tests/test_deepeval.py tests/test_rubric_example.py
 
   distribution-assurance:
     runs-on: ubuntu-latest

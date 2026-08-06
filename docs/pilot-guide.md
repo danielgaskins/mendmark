@@ -21,7 +21,8 @@ team considers worth fixing before release. It is not a general product demo.
 
 ## Measurements
 
-Record only aggregate or approved metadata:
+Record only aggregate or approved metadata using
+[`pilot/evidence.schema.json`](../pilot/evidence.schema.json):
 
 | Measure | Before | After |
 | --- | ---: | ---: |
@@ -47,3 +48,8 @@ interest without a real suite run is not product validation.
 
 Apply through the repository's **Mendmark pilot request** issue form. Never paste
 prompts, traces, tool arguments, outputs, or customer data into an issue.
+
+After customer approval, place only the anonymous structured record under
+`pilot/evidence/` and run `python scripts/summarize_pilots.py`. Product-level ICP
+utility claims require the aggregate gate described in [`pilot/README.md`](../pilot/README.md);
+a planned pilot or unreviewed anecdote never counts as completed evidence.

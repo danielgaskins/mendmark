@@ -24,13 +24,13 @@
       "additionalProperties": false,
       "required": ["agent_id"],
       "properties": {
-        "agent_id": {"type": "string", "minLength": 1},
-        "role": {"type": ["string", "null"], "minLength": 1},
-        "description": {"type": ["string", "null"], "minLength": 1},
+        "agent_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "role": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
+        "description": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
         "allowed_tools": {
           "type": "array",
           "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1}
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
         }
       }
     },
@@ -39,16 +39,16 @@
       "additionalProperties": false,
       "required": ["event_id", "kind", "actor_id"],
       "properties": {
-        "event_id": {"type": "string", "minLength": 1},
+        "event_id": {"type": "string", "minLength": 1, "maxLength": 512},
         "kind": {
           "enum": ["delegation", "message", "tool_call", "agent_result", "state_update"]
         },
-        "actor_id": {"type": "string", "minLength": 1},
-        "target_agent_id": {"type": ["string", "null"], "minLength": 1},
+        "actor_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "target_agent_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
         "depends_on": {
           "type": "array",
           "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1}
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
         },
         "tool_call": {"$ref": "suite-v1.schema.json#/$defs/call"},
         "payload": {}
@@ -70,7 +70,7 @@
       "additionalProperties": false,
       "required": ["case_id", "input", "actual_output"],
       "properties": {
-        "case_id": {"type": "string", "minLength": 1},
+        "case_id": {"type": "string", "minLength": 1, "maxLength": 512},
         "input": {"type": "string"},
         "actual_output": {"type": "string"},
         "expected_output": {"type": ["string", "null"]},
@@ -85,12 +85,12 @@
         "metadata": {"type": "object"},
         "tags": {
           "type": "array",
-          "items": {"type": "string", "minLength": 1}
+          "items": {"type": "string", "minLength": 1, "maxLength": 512}
         },
         "agents": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/agent"}},
         "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
         "expected_events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
-        "root_agent_id": {"type": ["string", "null"], "minLength": 1}
+        "root_agent_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 512}
       },
       "dependentRequired": {
         "events": ["agents", "root_agent_id"],

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "pilot_id": "pilot-planned-001",
+  "status": "planned",
+  "organization_profile": {
+    "industry": "software",
+    "team_size_band": "11-50",
+    "agent_topology": "mixed",
+    "evaluator_framework": "json-command"
+  },
+  "review": {
+    "no_raw_customer_content": true,
+    "customer_approved_aggregation": false,
+    "evaluator_owner_reviewed": false,
+    "independent_reviewer_count": 0
+  }
+}

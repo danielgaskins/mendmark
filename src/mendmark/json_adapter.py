@@ -25,6 +25,11 @@ class JsonAdapterError(ValueError):
     """Raised for invalid JSON suites or evaluator protocol responses."""
 
 
+MAXIMUM_SUITE_BYTES = 64_000_000
+MAXIMUM_JSON_DEPTH = 64
+MAXIMUM_JSON_NODES = 1_000_000
+
+
 def _reject_unknown(data: dict[str, Any], allowed: set[str], location: str) -> None:
     unknown = sorted(set(data) - allowed)
     if unknown:
@@ -52,6 +57,8 @@ def _string(value: Any, location: str, *, nullable: bool = False) -> str | None:
         raise JsonAdapterError(f"{location} must be a string")
     if not value.strip():
         raise JsonAdapterError(f"{location} must not be empty")
+    if len(value) > 512:
+        raise JsonAdapterError(f"{location} must be at most 512 characters")
     return value
 
 
@@ -88,8 +95,12 @@ def _agent(value: Any, location: str) -> AgentSpec:
     data = _object(value, location)
     _reject_unknown(data, {"agent_id", "role", "description", "allowed_tools"}, location)
     raw_tools = _array(data.get("allowed_tools", []), f"{location}.allowed_tools")
-    if not all(isinstance(tool, str) and tool for tool in raw_tools):
-        raise JsonAdapterError(f"{location}.allowed_tools must contain non-empty strings")
+    if not all(
+        isinstance(tool, str) and tool and len(tool) <= 512 for tool in raw_tools
+    ):
+        raise JsonAdapterError(
+            f"{location}.allowed_tools must contain strings of 1 to 512 characters"
+        )
     if len(raw_tools) != len(set(raw_tools)):
         raise JsonAdapterError(f"{location}.allowed_tools must not contain duplicates")
     return AgentSpec(
@@ -123,8 +134,13 @@ def _event(value: Any, location: str) -> AgentEvent:
         location,
     )
     raw_dependencies = _array(data.get("depends_on", []), f"{location}.depends_on")
-    if not all(isinstance(item, str) and item for item in raw_dependencies):
-        raise JsonAdapterError(f"{location}.depends_on must contain non-empty strings")
+    if not all(
+        isinstance(item, str) and item and len(item) <= 512
+        for item in raw_dependencies
+    ):
+        raise JsonAdapterError(
+            f"{location}.depends_on must contain strings of 1 to 512 characters"
+        )
     if len(raw_dependencies) != len(set(raw_dependencies)):
         raise JsonAdapterError(f"{location}.depends_on must not contain duplicates")
     raw_call = data.get("tool_call")
@@ -172,8 +188,10 @@ def _case(value: Any, index: int, *, schema_version: str) -> AgentCase:
     if not isinstance(metadata, dict):
         raise JsonAdapterError(f"{location}.metadata must be an object")
     raw_tags = _array(data.get("tags", []), f"{location}.tags")
-    if not all(isinstance(tag, str) and tag for tag in raw_tags):
-        raise JsonAdapterError(f"{location}.tags must contain non-empty strings")
+    if not all(isinstance(tag, str) and tag and len(tag) <= 512 for tag in raw_tags):
+        raise JsonAdapterError(
+            f"{location}.tags must contain strings of 1 to 512 characters"
+        )
     actual_output = data.get("actual_output")
     if not isinstance(actual_output, str):
         raise JsonAdapterError(f"{location}.actual_output must be a string")
@@ -237,17 +255,47 @@ class LoadedJsonSuite:
     schema_version: str
 
 
+def _validate_json_complexity(value: object) -> None:
+    nodes = 0
+    stack = [(value, 1)]
+    while stack:
+        current, depth = stack.pop()
+        nodes += 1
+        if nodes > MAXIMUM_JSON_NODES:
+            raise JsonAdapterError(
+                f"JSON suite exceeds the {MAXIMUM_JSON_NODES} node limit"
+            )
+        if depth > MAXIMUM_JSON_DEPTH:
+            raise JsonAdapterError(
+                f"JSON suite exceeds the {MAXIMUM_JSON_DEPTH} level nesting limit"
+            )
+        if isinstance(current, dict):
+            stack.extend((item, depth + 1) for item in current.values())
+        elif isinstance(current, list):
+            stack.extend((item, depth + 1) for item in current)
+
+
 def load_json_suite(path: str | Path) -> LoadedJsonSuite:
     """Load and validate a framework-neutral Mendmark JSON suite."""
     resolved = Path(path).expanduser().resolve()
     try:
-        data = json.loads(resolved.read_text(encoding="utf-8"))
+        raw = resolved.read_bytes()
+        if len(raw) > MAXIMUM_SUITE_BYTES:
+            raise JsonAdapterError(
+                f"JSON suite exceeds the {MAXIMUM_SUITE_BYTES} byte limit"
+            )
+        data = json.loads(raw.decode("utf-8"))
     except FileNotFoundError as error:
         raise JsonAdapterError(f"JSON suite does not exist: {resolved}") from error
+    except UnicodeDecodeError as error:
+        raise JsonAdapterError(f"JSON suite is not valid UTF-8: {resolved}") from error
     except json.JSONDecodeError as error:
         raise JsonAdapterError(
             f"invalid JSON in {resolved}: line {error.lineno}, column {error.colno}"
         ) from error
+    except RecursionError as error:
+        raise JsonAdapterError("JSON suite nesting is too deep") from error
+    _validate_json_complexity(data)
     root = _object(data, "JSON suite")
     _reject_unknown(root, {"schema_version", "policy", "tools", "cases"}, "JSON suite")
     schema_version = root.get("schema_version")

@@ -12,7 +12,11 @@ from pathlib import Path
 from . import __version__
 from .audit import AuditPolicy, run_audit
 from .models import SpecError, TaskSpec
-from .mutations import DEFAULT_MUTATIONS
+from .mutations import (
+    AGENT_EVAL_V1_MUTATIONS,
+    DEFAULT_MUTATIONS,
+    MULTI_AGENT_V1_MUTATIONS,
+)
 from .plugins import load_mutation_plugins
 from .runner import RunnerError, _write_json, grade_run, load_manifest, prepare_run
 
@@ -126,6 +130,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=64_000_000,
         help="maximum serialized evaluator request size (default: 64000000)",
+    )
+    audit_json.add_argument(
+        "--mutation-profile",
+        choices=("current", "agent-eval-v1", "multi-agent-v1"),
+        default="current",
+        help="replay a historical built-in operator profile (default: current)",
     )
     _audit_arguments(audit_json)
 
@@ -479,7 +489,11 @@ def main(argv: list[str] | None = None) -> int:
                     protocol_version=suite.schema_version,
                     maximum_request_bytes=args.evaluator_maximum_request_bytes,
                 )
-                operators = DEFAULT_MUTATIONS
+                operators = {
+                    "current": DEFAULT_MUTATIONS,
+                    "agent-eval-v1": AGENT_EVAL_V1_MUTATIONS,
+                    "multi-agent-v1": MULTI_AGENT_V1_MUTATIONS,
+                }[args.mutation_profile]
                 adapter = "json-command"
             external_operators = load_mutation_plugins(args.mutation_plugin)
             operators = operators + external_operators

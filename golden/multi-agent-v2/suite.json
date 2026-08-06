@@ -1,0 +1,96 @@
+{
+  "schema_version": "2.0",
+  "policy": {"minimum_kill_rate": 1.0, "fail_on_critical_survivor": true, "fail_on_untested_tools": true, "fail_on_tool_contract_issues": true, "fail_on_regression": true},
+  "tools": [
+    {"name": "lookup_record", "input_schema": {"type": "object", "properties": {"record_id": {"type": "string"}}, "required": ["record_id"]}},
+    {"name": "assess_risk", "input_schema": {"type": "object", "properties": {"account_id": {"type": "string"}}, "required": ["account_id"]}},
+    {"name": "reserve_item", "input_schema": {"type": "object", "properties": {"item_id": {"type": "string"}, "quantity": {"type": "integer"}}, "required": ["item_id", "quantity"]}, "side_effecting": true},
+    {"name": "write_record", "input_schema": {"type": "object", "properties": {"record_id": {"type": "string"}, "status": {"type": "string"}}, "required": ["record_id", "status"]}, "side_effecting": true},
+    {"name": "send_notice", "input_schema": {"type": "object", "properties": {"recipient_id": {"type": "string"}, "template": {"type": "string"}}, "required": ["recipient_id", "template"]}, "side_effecting": true}
+  ],
+  "cases": [
+    {
+      "case_id": "parallel-risk-and-record-review", "input": "Review the account and record in parallel.", "actual_output": "The record is valid and the account is low risk.", "expected_output": "The record is valid and the account is low risk.", "root_agent_id": "supervisor",
+      "agents": [{"agent_id": "supervisor", "role": "orchestrator", "allowed_tools": []}, {"agent_id": "records", "role": "record specialist", "allowed_tools": ["lookup_record"]}, {"agent_id": "risk", "role": "risk specialist", "allowed_tools": ["assess_risk"]}],
+      "events": [
+        {"event_id": "p-delegate-records", "kind": "delegation", "actor_id": "supervisor", "target_agent_id": "records", "payload": {"request_id": "req-p-1", "task": "Review record rec-100."}},
+        {"event_id": "p-delegate-risk", "kind": "delegation", "actor_id": "supervisor", "target_agent_id": "risk", "payload": {"request_id": "req-p-2", "task": "Review account acct-200."}},
+        {"event_id": "p-record-lookup", "kind": "tool_call", "actor_id": "records", "depends_on": ["p-delegate-records"], "tool_call": {"name": "lookup_record", "input_parameters": {"record_id": "rec-100"}, "output": {"valid": true}}},
+        {"event_id": "p-record-result", "kind": "agent_result", "actor_id": "records", "target_agent_id": "supervisor", "depends_on": ["p-record-lookup"], "payload": {"request_id": "req-p-1", "valid": true}},
+        {"event_id": "p-risk-assess", "kind": "tool_call", "actor_id": "risk", "depends_on": ["p-delegate-risk"], "tool_call": {"name": "assess_risk", "input_parameters": {"account_id": "acct-200"}, "output": {"risk": "low"}}},
+        {"event_id": "p-risk-result", "kind": "agent_result", "actor_id": "risk", "target_agent_id": "supervisor", "depends_on": ["p-risk-assess"], "payload": {"request_id": "req-p-2", "risk": "low"}},
+        {"event_id": "p-aggregate", "kind": "message", "actor_id": "supervisor", "depends_on": ["p-record-result", "p-risk-result"], "payload": {"status": "complete"}}
+      ],
+      "expected_events": []
+    },
+    {
+      "case_id": "nested-fulfillment", "input": "Plan and reserve the requested item.", "actual_output": "The item is reserved.", "expected_output": "The item is reserved.", "root_agent_id": "director",
+      "agents": [{"agent_id": "director", "role": "director", "allowed_tools": []}, {"agent_id": "planner", "role": "planner", "allowed_tools": []}, {"agent_id": "warehouse", "role": "warehouse", "allowed_tools": ["reserve_item"]}],
+      "events": [
+        {"event_id": "n-delegate-plan", "kind": "delegation", "actor_id": "director", "target_agent_id": "planner", "payload": {"request_id": "req-n-1", "task": "Fulfill item item-300."}},
+        {"event_id": "n-delegate-warehouse", "kind": "delegation", "actor_id": "planner", "target_agent_id": "warehouse", "depends_on": ["n-delegate-plan"], "payload": {"request_id": "req-n-2", "task": "Reserve one item-300."}},
+        {"event_id": "n-reserve", "kind": "tool_call", "actor_id": "warehouse", "depends_on": ["n-delegate-warehouse"], "tool_call": {"name": "reserve_item", "input_parameters": {"item_id": "item-300", "quantity": 1}, "output": {"reservation_id": "res-300", "status": "held"}}},
+        {"event_id": "n-state", "kind": "state_update", "actor_id": "warehouse", "depends_on": ["n-reserve"], "payload": {"reservation": "held", "revision": 2}},
+        {"event_id": "n-warehouse-result", "kind": "agent_result", "actor_id": "warehouse", "target_agent_id": "planner", "depends_on": ["n-state"], "payload": {"request_id": "req-n-2", "status": "reserved"}},
+        {"event_id": "n-plan-result", "kind": "agent_result", "actor_id": "planner", "target_agent_id": "director", "depends_on": ["n-warehouse-result"], "payload": {"request_id": "req-n-1", "status": "fulfilled"}}
+      ],
+      "expected_events": []
+    },
+    {
+      "case_id": "retry-read-after-timeout", "input": "Read the record, retrying a transient timeout.", "actual_output": "The record was recovered on retry.", "expected_output": "The record was recovered on retry.", "root_agent_id": "controller",
+      "agents": [{"agent_id": "controller", "role": "controller", "allowed_tools": []}, {"agent_id": "reader", "role": "reader", "allowed_tools": ["lookup_record"]}],
+      "events": [
+        {"event_id": "r-delegate", "kind": "delegation", "actor_id": "controller", "target_agent_id": "reader", "payload": {"request_id": "req-r-1", "task": "Read rec-401 with one retry."}},
+        {"event_id": "r-first-read", "kind": "tool_call", "actor_id": "reader", "depends_on": ["r-delegate"], "tool_call": {"name": "lookup_record", "input_parameters": {"record_id": "rec-401"}, "output": {"error": "timeout"}}},
+        {"event_id": "r-retry-read", "kind": "tool_call", "actor_id": "reader", "depends_on": ["r-first-read"], "tool_call": {"name": "lookup_record", "input_parameters": {"record_id": "rec-401"}, "output": {"valid": true}}},
+        {"event_id": "r-state", "kind": "state_update", "actor_id": "reader", "depends_on": ["r-retry-read"], "payload": {"attempt": 2, "revision": 2}},
+        {"event_id": "r-result", "kind": "agent_result", "actor_id": "reader", "target_agent_id": "controller", "depends_on": ["r-state"], "payload": {"request_id": "req-r-1", "status": "recovered"}}
+      ],
+      "expected_events": []
+    },
+    {
+      "case_id": "parallel-shared-state", "input": "Read two records and reconcile their state.", "actual_output": "Both records were reconciled.", "expected_output": "Both records were reconciled.", "root_agent_id": "coordinator",
+      "agents": [{"agent_id": "coordinator", "role": "coordinator", "allowed_tools": []}, {"agent_id": "left", "role": "reader", "allowed_tools": ["lookup_record"]}, {"agent_id": "right", "role": "reader", "allowed_tools": ["lookup_record"]}],
+      "events": [
+        {"event_id": "s-delegate-left", "kind": "delegation", "actor_id": "coordinator", "target_agent_id": "left", "payload": {"request_id": "req-s-1", "task": "Read rec-501."}},
+        {"event_id": "s-delegate-right", "kind": "delegation", "actor_id": "coordinator", "target_agent_id": "right", "payload": {"request_id": "req-s-2", "task": "Read rec-502."}},
+        {"event_id": "s-left-read", "kind": "tool_call", "actor_id": "left", "depends_on": ["s-delegate-left"], "tool_call": {"name": "lookup_record", "input_parameters": {"record_id": "rec-501"}, "output": {"value": "left"}}},
+        {"event_id": "s-left-state", "kind": "state_update", "actor_id": "left", "depends_on": ["s-left-read"], "payload": {"branch": "left", "revision": 3}},
+        {"event_id": "s-left-result", "kind": "agent_result", "actor_id": "left", "target_agent_id": "coordinator", "depends_on": ["s-left-state"], "payload": {"request_id": "req-s-1", "status": "ready"}},
+        {"event_id": "s-right-read", "kind": "tool_call", "actor_id": "right", "depends_on": ["s-delegate-right"], "tool_call": {"name": "lookup_record", "input_parameters": {"record_id": "rec-502"}, "output": {"value": "right"}}},
+        {"event_id": "s-right-state", "kind": "state_update", "actor_id": "right", "depends_on": ["s-right-read"], "payload": {"branch": "right", "revision": 4}},
+        {"event_id": "s-right-result", "kind": "agent_result", "actor_id": "right", "target_agent_id": "coordinator", "depends_on": ["s-right-state"], "payload": {"request_id": "req-s-2", "status": "ready"}},
+        {"event_id": "s-aggregate", "kind": "message", "actor_id": "coordinator", "depends_on": ["s-left-result", "s-right-result"], "payload": {"revision": 5, "status": "reconciled"}}
+      ],
+      "expected_events": []
+    },
+    {
+      "case_id": "same-tool-different-authority", "input": "Assess two accounts independently.", "actual_output": "Both risk assessments are complete.", "expected_output": "Both risk assessments are complete.", "root_agent_id": "lead",
+      "agents": [{"agent_id": "lead", "role": "lead", "allowed_tools": []}, {"agent_id": "analyst-a", "role": "analyst", "allowed_tools": ["assess_risk"]}, {"agent_id": "analyst-b", "role": "analyst", "allowed_tools": ["assess_risk"]}],
+      "events": [
+        {"event_id": "a-delegate-one", "kind": "delegation", "actor_id": "lead", "target_agent_id": "analyst-a", "payload": {"request_id": "req-a-1", "task": "Assess acct-601."}},
+        {"event_id": "a-delegate-two", "kind": "delegation", "actor_id": "lead", "target_agent_id": "analyst-b", "payload": {"request_id": "req-a-2", "task": "Assess acct-602."}},
+        {"event_id": "a-assess-one", "kind": "tool_call", "actor_id": "analyst-a", "depends_on": ["a-delegate-one"], "tool_call": {"name": "assess_risk", "input_parameters": {"account_id": "acct-601"}, "output": {"risk": "medium"}}},
+        {"event_id": "a-result-one", "kind": "agent_result", "actor_id": "analyst-a", "target_agent_id": "lead", "depends_on": ["a-assess-one"], "payload": {"request_id": "req-a-1", "risk": "medium"}},
+        {"event_id": "a-assess-two", "kind": "tool_call", "actor_id": "analyst-b", "depends_on": ["a-delegate-two"], "tool_call": {"name": "assess_risk", "input_parameters": {"account_id": "acct-602"}, "output": {"risk": "low"}}},
+        {"event_id": "a-result-two", "kind": "agent_result", "actor_id": "analyst-b", "target_agent_id": "lead", "depends_on": ["a-assess-two"], "payload": {"request_id": "req-a-2", "risk": "low"}},
+        {"event_id": "a-aggregate", "kind": "message", "actor_id": "lead", "depends_on": ["a-result-one", "a-result-two"], "payload": {"status": "complete"}}
+      ],
+      "expected_events": []
+    },
+    {
+      "case_id": "write-then-notify", "input": "Update the record, then notify the owner.", "actual_output": "The record was updated and its owner notified.", "expected_output": "The record was updated and its owner notified.", "root_agent_id": "owner",
+      "agents": [{"agent_id": "owner", "role": "workflow owner", "allowed_tools": []}, {"agent_id": "writer", "role": "writer", "allowed_tools": ["write_record"]}, {"agent_id": "notifier", "role": "notifier", "allowed_tools": ["send_notice"]}],
+      "events": [
+        {"event_id": "w-delegate-write", "kind": "delegation", "actor_id": "owner", "target_agent_id": "writer", "payload": {"request_id": "req-w-1", "task": "Close rec-701."}},
+        {"event_id": "w-write", "kind": "tool_call", "actor_id": "writer", "depends_on": ["w-delegate-write"], "tool_call": {"name": "write_record", "input_parameters": {"record_id": "rec-701", "status": "closed"}, "output": {"revision": 8}}},
+        {"event_id": "w-write-state", "kind": "state_update", "actor_id": "writer", "depends_on": ["w-write"], "payload": {"revision": 8, "status": "closed"}},
+        {"event_id": "w-write-result", "kind": "agent_result", "actor_id": "writer", "target_agent_id": "owner", "depends_on": ["w-write-state"], "payload": {"request_id": "req-w-1", "status": "closed"}},
+        {"event_id": "w-delegate-notice", "kind": "delegation", "actor_id": "owner", "target_agent_id": "notifier", "depends_on": ["w-write-result"], "payload": {"request_id": "req-w-2", "task": "Notify user-702."}},
+        {"event_id": "w-notify", "kind": "tool_call", "actor_id": "notifier", "depends_on": ["w-delegate-notice"], "tool_call": {"name": "send_notice", "input_parameters": {"recipient_id": "user-702", "template": "record_closed"}, "output": {"notice_id": "notice-703", "status": "sent"}}},
+        {"event_id": "w-notice-result", "kind": "agent_result", "actor_id": "notifier", "target_agent_id": "owner", "depends_on": ["w-notify"], "payload": {"request_id": "req-w-2", "status": "sent"}}
+      ],
+      "expected_events": []
+    }
+  ]
+}

@@ -7,6 +7,20 @@ Semantic Versioning for its Python and JSON contracts.
 
 ### Added
 
+- Multi-Agent Golden Set v2 with six diverse topologies, 41 causal events, 294
+  mutations across 30 applicable operators, pinned evaluator/schema assets,
+  strong/output-only/scheduler-permuted profiles, and checked-in results.
+- Ten fault operators for omitted, unexpected, wrong-type, and swapped tool
+  arguments; duplicate delegations/results; premature aggregation; stale
+  revisions; abandoned branches; and incorrect result correlation.
+- Property-style generated-DAG tests, adversarial JSON limits, complete Python
+  3.10-3.13 and integration compatibility matrices, and an enforced
+  enterprise-scale benchmark.
+- Privacy-safe design-partner evidence schema, validator, aggregate utility
+  gate, and customer-pattern promotion methodology.
+- Release publication now depends on tests, all golden sets, dependency audit,
+  enterprise budgets, distribution assurance, and package metadata checks.
+
 - Native multi-agent event graphs with explicit agent contracts, delegation,
   causal dependencies, agent-owned tool calls, results, messages, and shared
   state updates through JSON suite and evaluator protocol `2.0`.

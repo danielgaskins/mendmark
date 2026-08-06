@@ -49,7 +49,7 @@ mendmark audit-json examples/multi_agent_suite.json \
 The example runs a supervisor, billing specialist, and risk specialist across
 two parallel branches. It includes three tool calls, one side effect, two
 delegations, two returned results, one shared-state update, and a causally
-dependent aggregation. The complete evaluator kills all 44 applicable tool and
+dependent aggregation. The complete evaluator kills all 64 applicable tool and
 coordination mutations.
 
 To see the failure mode Mendmark is designed to expose, run the same trace with
@@ -61,7 +61,7 @@ mendmark audit-json examples/multi_agent_suite.json \
   --output /tmp/mendmark-weak-multi-agent-report.json
 ```
 
-That evaluator detects 5 of 44 mutations and misses 39, including 27 critical
+That evaluator detects 5 of 64 mutations and misses 59, including 40 critical
 failures. The terminal output groups survivors by category and adds privacy-safe
 agent, target, event, and tool identifiers. The report provides the same
 coverage both by category and by individual operator, making the next metric to
@@ -83,12 +83,26 @@ add apparent without exposing prompts, payloads, arguments, outputs, or answers.
 | `coordination.state_update_corrupted` | Changes a shared-state value | Critical |
 | `coordination.aggregation_dropped` | Removes a multi-branch aggregation | Critical |
 | `coordination.loop_inserted` | Inserts a reverse delegation loop | Critical |
+| `coordination.delegation_duplicated` | Issues the same delegation twice | High |
+| `coordination.result_duplicated` | Delivers a specialist result twice | High |
+| `coordination.aggregation_premature` | Aggregates before all branches complete | Critical |
+| `coordination.state_revision_stale` | Applies a stale shared-state revision | Critical |
+| `coordination.branch_abandoned` | Stops a delegated branch without work | Critical |
+| `coordination.result_request_changed` | Correlates a result to the wrong request | Critical |
 
 All applicable tool and response operators also run against multi-agent cases.
 Tool mutations preserve the owning agent and event identity. Removing an event
 rewires its downstream dependencies to the removed event's prerequisites, so a
 tool-removal mutation does not accidentally introduce an unrelated dangling
 reference.
+
+The broader [Multi-Agent Golden Set v2](../golden/multi-agent-v2/) applies 30
+operators to six workflows and 41 events. Its strong and scheduler-permuted
+profiles kill 294/294 mutations; its output-only profile exposes 271 survivors.
+
+```bash
+python benchmarks/benchmark_multi_agent_golden_set_v2.py
+```
 
 ## Evaluation design
 

@@ -20,8 +20,8 @@ def test_example_deepeval_suite_kills_every_builtin_mutation() -> None:
 
     assert report["summary"] == {
         "cases": 1,
-        "mutants": 13,
-        "killed": 13,
+        "mutants": 19,
+        "killed": 19,
         "survived": 0,
         "errors": 0,
         "kill_rate": 1.0,

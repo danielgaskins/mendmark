@@ -128,6 +128,38 @@ def _replace_event_call(
     )
 
 
+def _replace_flat_call(
+    case: AgentCase, index: int, call: ToolCallRecord
+) -> AgentCase:
+    return case.with_changes(
+        tools_called=case.tools_called[:index]
+        + (call,)
+        + case.tools_called[index + 1 :]
+    )
+
+
+def _replace_call(
+    case: AgentCase, index: int, call: ToolCallRecord
+) -> AgentCase:
+    return (
+        _replace_event_call(case, index, call)
+        if case.events
+        else _replace_flat_call(case, index, call)
+    )
+
+
+def _indexed_calls(case: AgentCase) -> list[tuple[int, ToolCallRecord, str | None, str | None]]:
+    if case.events:
+        return [
+            (index, event.tool_call, event.actor_id, event.event_id)
+            for index, event in enumerate(case.events)
+            if event.kind == "tool_call" and event.tool_call is not None
+        ]
+    return [
+        (index, call, None, None) for index, call in enumerate(case.tools_called)
+    ]
+
+
 def _remove_event(case: AgentCase, index: int) -> AgentCase:
     """Remove an event while preserving downstream causal connectivity."""
 
@@ -274,6 +306,156 @@ class ChangeToolArguments:
                 suffix=f"{index}-{call.name}",
                 tool_name=call.name,
             ))
+        return mutants
+
+
+class OmitToolArgument:
+    name = "tool.argument_omitted"
+    category = "tool-use"
+    description = "A required or observed tool argument was omitted"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, call, agent_id, event_id in _indexed_calls(case):
+            if not call.input_parameters:
+                continue
+            field = sorted(call.input_parameters)[0]
+            parameters = dict(call.input_parameters)
+            parameters.pop(field)
+            changed_call = ToolCallRecord(
+                call.name, parameters, call.output, call.description
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_call(case, index, changed_call),
+                suffix=f"{event_id or index}-{call.name}-{field}",
+                tool_name=call.name,
+                agent_id=agent_id,
+                event_id=event_id,
+            ))
+        return mutants
+
+
+class AddUnexpectedToolArgument:
+    name = "tool.argument_unexpected"
+    category = "tool-use"
+    description = "An unexpected argument was added to a tool call"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, call, agent_id, event_id in _indexed_calls(case):
+            field = "__mendmark_unexpected"
+            while field in call.input_parameters:
+                field += "_x"
+            parameters = {**call.input_parameters, field: True}
+            changed_call = ToolCallRecord(
+                call.name, parameters, call.output, call.description
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_call(case, index, changed_call),
+                suffix=f"{event_id or index}-{call.name}",
+                tool_name=call.name,
+                agent_id=agent_id,
+                event_id=event_id,
+            ))
+        return mutants
+
+
+def _incompatible_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return 0
+    if isinstance(value, bool):
+        return "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, list):
+        return {"unexpected": True}
+    if isinstance(value, dict):
+        return ["unexpected"]
+    if value is None:
+        return False
+    return "__mendmark_wrong_type"
+
+
+class ChangeToolArgumentType:
+    name = "tool.argument_type_changed"
+    category = "tool-use"
+    description = "A tool argument was changed to an incompatible JSON type"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, call, agent_id, event_id in _indexed_calls(case):
+            if not call.input_parameters:
+                continue
+            field = sorted(call.input_parameters)[0]
+            parameters = dict(call.input_parameters)
+            parameters[field] = _incompatible_value(parameters[field])
+            changed_call = ToolCallRecord(
+                call.name, parameters, call.output, call.description
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_call(case, index, changed_call),
+                suffix=f"{event_id or index}-{call.name}-{field}",
+                tool_name=call.name,
+                agent_id=agent_id,
+                event_id=event_id,
+            ))
+        return mutants
+
+
+class SwapToolIdentifier:
+    name = "tool.identifier_swapped"
+    category = "routing"
+    description = "A resource identifier was replaced by one from another call"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        indexed = _indexed_calls(case)
+        identifiers = sorted({
+            value
+            for _, call, _, _ in indexed
+            for field, value in call.input_parameters.items()
+            if (field.lower() == "id" or field.lower().endswith("_id"))
+            and isinstance(value, str)
+        })
+        mutants = []
+        for index, call, agent_id, event_id in indexed:
+            for field in sorted(call.input_parameters):
+                value = call.input_parameters[field]
+                if (
+                    field.lower() != "id"
+                    and not field.lower().endswith("_id")
+                ) or not isinstance(value, str):
+                    continue
+                replacement = next(
+                    (candidate for candidate in identifiers if candidate != value),
+                    None,
+                )
+                if replacement is None:
+                    continue
+                parameters = dict(call.input_parameters)
+                parameters[field] = replacement
+                changed_call = ToolCallRecord(
+                    call.name, parameters, call.output, call.description
+                )
+                mutants.append(_mutant(
+                    self,
+                    case,
+                    _replace_call(case, index, changed_call),
+                    suffix=f"{event_id or index}-{call.name}-{field}",
+                    tool_name=call.name,
+                    agent_id=agent_id,
+                    event_id=event_id,
+                ))
+                break
         return mutants
 
 
@@ -932,7 +1114,243 @@ class InsertDelegationLoop:
         return mutants
 
 
-DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
+def _unique_event_id(case: AgentCase, base: str) -> str:
+    known = {event.event_id for event in case.events}
+    candidate = base
+    while candidate in known:
+        candidate += "-x"
+    return candidate
+
+
+class DuplicateDelegation:
+    name = "coordination.delegation_duplicated"
+    category = "coordination"
+    description = "A delegation was issued twice to the same specialist"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for event in case.events:
+            if event.kind != "delegation" or event.target_agent_id is None:
+                continue
+            duplicate_id = _unique_event_id(
+                case, f"{event.event_id}-mendmark-duplicate"
+            )
+            duplicate = AgentEvent(
+                event_id=duplicate_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=event.depends_on,
+                payload=event.payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                case.with_changes(events=case.events + (duplicate,)),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                event_id=duplicate_id,
+            ))
+        return mutants
+
+
+class DuplicateAgentResult:
+    name = "coordination.result_duplicated"
+    category = "coordination"
+    description = "A specialist result was delivered more than once"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for event in case.events:
+            if event.kind != "agent_result":
+                continue
+            duplicate_id = _unique_event_id(
+                case, f"{event.event_id}-mendmark-duplicate"
+            )
+            duplicate = AgentEvent(
+                event_id=duplicate_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=(event.event_id,),
+                payload=event.payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                case.with_changes(events=case.events + (duplicate,)),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                event_id=duplicate_id,
+            ))
+        return mutants
+
+
+class PrematureAggregation:
+    name = "coordination.aggregation_premature"
+    category = "aggregation"
+    description = "A multi-branch aggregation ran before its prerequisites"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, event in enumerate(case.events):
+            if event.kind != "message" or len(event.depends_on) < 2:
+                continue
+            changed = AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=(),
+                payload=event.payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class StaleStateRevision:
+    name = "coordination.state_revision_stale"
+    category = "shared-state"
+    description = "A shared-state update used a stale revision"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, event in enumerate(case.events):
+            if event.kind != "state_update" or not isinstance(event.payload, dict):
+                continue
+            revision_field = next(
+                (
+                    field
+                    for field in sorted(event.payload)
+                    if field in {"revision", "version"}
+                    and isinstance(event.payload[field], int)
+                    and not isinstance(event.payload[field], bool)
+                ),
+                None,
+            )
+            if revision_field is None:
+                continue
+            payload = dict(event.payload)
+            payload[revision_field] = payload[revision_field] - 1
+            changed = AgentEvent(
+                event.event_id,
+                event.kind,
+                event.actor_id,
+                event.target_agent_id,
+                event.depends_on,
+                event.tool_call,
+                payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=f"{event.event_id}-{revision_field}",
+                agent_id=event.actor_id,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class AbandonDelegatedBranch:
+    name = "coordination.branch_abandoned"
+    category = "coordination"
+    description = "A delegated specialist branch stopped without producing work"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for delegation in case.events:
+            if delegation.kind != "delegation" or delegation.target_agent_id is None:
+                continue
+            changed = case
+            removable = {
+                event.event_id
+                for event in case.events
+                if event.actor_id == delegation.target_agent_id
+                and event.event_id != delegation.event_id
+            }
+            for event_id in [
+                event.event_id for event in reversed(changed.events)
+                if event.event_id in removable
+            ]:
+                index = next(
+                    index
+                    for index, event in enumerate(changed.events)
+                    if event.event_id == event_id
+                )
+                changed = _remove_event(changed, index)
+            if changed == case:
+                continue
+            mutants.append(_mutant(
+                self,
+                case,
+                changed,
+                suffix=delegation.event_id,
+                agent_id=delegation.target_agent_id,
+                target_agent_id=delegation.actor_id,
+                event_id=delegation.event_id,
+            ))
+        return mutants
+
+
+class ChangeResultRequestIdentity:
+    name = "coordination.result_request_changed"
+    category = "routing"
+    description = "A specialist result was correlated with the wrong request"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, event in enumerate(case.events):
+            if event.kind != "agent_result" or not isinstance(event.payload, dict):
+                continue
+            field = next(
+                (
+                    key for key in sorted(event.payload)
+                    if key in {"request_id", "correlation_id", "task_id"}
+                ),
+                None,
+            )
+            if field is None:
+                continue
+            payload = dict(event.payload)
+            payload[field] = _changed_scalar(payload[field])
+            changed = AgentEvent(
+                event.event_id,
+                event.kind,
+                event.actor_id,
+                event.target_agent_id,
+                event.depends_on,
+                event.tool_call,
+                payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=f"{event.event_id}-{field}",
+                agent_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+AGENT_EVAL_V1_MUTATIONS: tuple[MutationOperator, ...] = (
     RemoveToolCall(),
     ChangeToolArguments(),
     CorruptToolOutput(),
@@ -942,6 +1360,9 @@ DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
     FalseSuccessAfterToolError(),
     OmitFinalResponse(),
     ReplaceFinalResponse(),
+)
+
+MULTI_AGENT_V1_MUTATIONS: tuple[MutationOperator, ...] = AGENT_EVAL_V1_MUTATIONS + (
     RemoveDelegation(),
     ChangeDelegationRecipient(),
     OmitDelegationContext(),
@@ -954,6 +1375,25 @@ DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
     CorruptStateUpdate(),
     DropAggregation(),
     InsertDelegationLoop(),
+)
+
+DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
+    AGENT_EVAL_V1_MUTATIONS
+    + (
+        OmitToolArgument(),
+        AddUnexpectedToolArgument(),
+        ChangeToolArgumentType(),
+        SwapToolIdentifier(),
+    )
+    + MULTI_AGENT_V1_MUTATIONS[len(AGENT_EVAL_V1_MUTATIONS) :]
+    + (
+        DuplicateDelegation(),
+        DuplicateAgentResult(),
+        PrematureAggregation(),
+        StaleStateRevision(),
+        AbandonDelegatedBranch(),
+        ChangeResultRequestIdentity(),
+    )
 )
 
 

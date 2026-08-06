@@ -59,8 +59,8 @@ def test_native_multi_agent_example_kills_tool_and_coordination_mutations(
     Draft202012Validator(schema("report-v1.schema.json")).validate(report)
     assert report["summary"] == {
         "cases": 1,
-        "mutants": 44,
-        "killed": 44,
+        "mutants": 64,
+        "killed": 64,
         "survived": 0,
         "errors": 0,
         "kill_rate": 1.0,
@@ -87,7 +87,16 @@ def test_native_multi_agent_example_kills_tool_and_coordination_mutations(
         "coordination.state_update_corrupted",
         "coordination.aggregation_dropped",
         "coordination.loop_inserted",
+        "coordination.delegation_duplicated",
+        "coordination.result_duplicated",
+        "coordination.aggregation_premature",
+        "coordination.state_revision_stale",
+        "coordination.branch_abandoned",
         "tool.arguments_changed",
+        "tool.argument_omitted",
+        "tool.argument_unexpected",
+        "tool.argument_type_changed",
+        "tool.identifier_swapped",
         "tool.side_effect_duplicated",
     } <= operators
     assert "ch_104" not in str(report)
@@ -223,4 +232,4 @@ def test_large_event_graph_generates_stable_unique_mutations() -> None:
     first_ids = tuple(mutant.mutant_id for mutant in first)
     assert first_ids == tuple(mutant.mutant_id for mutant in second)
     assert len(first_ids) == len(set(first_ids))
-    assert len(first_ids) == 502
+    assert len(first_ids) == 802

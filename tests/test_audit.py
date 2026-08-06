@@ -153,6 +153,43 @@ def test_tool_contract_issues_do_not_store_argument_values() -> None:
     assert report["gate"]["passed"] is False
 
 
+def test_closed_tool_schema_rejects_unexpected_arguments_without_values() -> None:
+    call = ToolCallRecord(
+        "lookup", {"record_id": "record-1", "private-extra": "secret"}, "ok"
+    )
+    case = AgentCase(
+        "closed-schema",
+        "lookup",
+        "ok",
+        expected_output="ok",
+        tools_called=(call,),
+        expected_tools=(call,),
+    )
+
+    report = run_audit(
+        cases=(case,),
+        tools=(
+            ToolSpec(
+                "lookup",
+                input_schema={
+                    "type": "object",
+                    "properties": {"record_id": {"type": "string"}},
+                    "additionalProperties": False,
+                },
+            ),
+        ),
+        evaluator=ExactEvaluator(),
+        operators=(),
+    )
+
+    assert len(report["tools"]["contract_issues"]) == 2
+    assert {
+        issue["issue"] for issue in report["tools"]["contract_issues"]
+    } == {"unexpected argument is not allowed"}
+    assert "secret" not in str(report)
+    assert report["gate"]["passed"] is False
+
+
 def test_audit_stops_before_evaluation_when_mutation_budget_is_exceeded() -> None:
     call = ToolCallRecord("lookup", {"id": "1"}, "ok")
     case = AgentCase(

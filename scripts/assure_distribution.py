@@ -99,6 +99,13 @@ def main() -> int:
                 ("golden", "agent-eval-v1", "results.json"),
                 ("golden", "multi-agent-v1", "manifest.json"),
                 ("golden", "multi-agent-v1", "results.json"),
+                ("golden", "multi-agent-v2", "manifest.json"),
+                ("golden", "multi-agent-v2", "suite.json"),
+                ("golden", "multi-agent-v2", "evaluator.py"),
+                ("golden", "multi-agent-v2", "weak_evaluator.py"),
+                ("golden", "multi-agent-v2", "results.json"),
+                ("pilot", "evidence.schema.json"),
+                ("pilot", "README.md"),
                 ("examples", "multi_agent_suite.json"),
                 ("examples", "multi_agent_evaluator.py"),
                 ("examples", "multi_agent_weak_evaluator.py"),
@@ -155,7 +162,7 @@ def main() -> int:
             env=clean_env,
         )
         report = json.loads(report_path.read_text(encoding="utf-8"))
-        if report["gate"]["passed"] is not True or report["summary"]["mutants"] != 13:
+        if report["gate"]["passed"] is not True or report["summary"]["mutants"] != 19:
             raise RuntimeError("clean-wheel audit did not produce the expected passing report")
         if "Gate: PASS" not in output:
             raise RuntimeError("clean-wheel audit did not present a clear passing result")
@@ -179,7 +186,7 @@ def main() -> int:
         multi_report = json.loads(multi_report_path.read_text(encoding="utf-8"))
         if (
             multi_report["gate"]["passed"] is not True
-            or multi_report["summary"]["mutants"] != 44
+            or multi_report["summary"]["mutants"] != 64
             or len(multi_report["agents"]["declared"]) != 3
         ):
             raise RuntimeError(
@@ -210,12 +217,12 @@ def main() -> int:
         weak_report = json.loads(weak_report_path.read_text(encoding="utf-8"))
         if weak_report["summary"] != {
             "cases": 1,
-            "mutants": 44,
+            "mutants": 64,
             "killed": 5,
-            "survived": 39,
+            "survived": 59,
             "errors": 0,
-            "kill_rate": 0.113636,
-            "critical_survivors": 27,
+            "kill_rate": 0.078125,
+            "critical_survivors": 40,
         }:
             raise RuntimeError("clean-wheel weak evaluator produced unexpected results")
         if (

@@ -30,6 +30,9 @@ def test_default_mutations_cover_agent_tool_failures() -> None:
     assert operators == {
         "tool.removed",
         "tool.arguments_changed",
+        "tool.argument_omitted",
+        "tool.argument_unexpected",
+        "tool.argument_type_changed",
         "tool.output_corrupted",
         "tool.side_effect_duplicated",
         "tool.order_reversed",

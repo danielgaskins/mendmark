@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "name": "Mendmark Multi-Agent Golden Set",
+  "version": "multi-agent-v2",
+  "license": "MIT",
+  "assets": {
+    "suite.json": "ca13a9fd5cc21bfc078384aeb31e913c89f736c605c4366462ee0bc1b9196433",
+    "evaluator.py": "475d9bbbf2d8e32371d37661017f6970b6ad577347b644babde4ad659ca88f6a",
+    "weak_evaluator.py": "490b2cd85b1c8b5302682b388f6821a543ad1e615e2714139d9cc44dbc779cc9",
+    "README.md": "6ffbfbff83fc3fe1aadaee2d5594c90d1085fdbdd80755fda0639356f8391d58",
+    "suite-v2.schema.json": "8fa6edaad5d6b1052fbf0ee24c8403a37fb400580b2c88086ff009e033e25278",
+    "report-v1.schema.json": "c8f4f0c495fdbbe16ba3f4b0517817df715c204fbf9c4fb2c990b4dc0ed5073e"
+  },
+  "mutation_id_digest": "e023a6686ed59fc79ddba4db63131171d3031b34ed8b4cc2b3defb0610a2e337",
+  "methodology": {
+    "unit": "A passing multi-agent causal event graph with an exact final outcome.",
+    "generation": "Every applicable built-in operator is applied once per eligible event, call, or case.",
+    "oracle": "The strong evaluator compares event identity, ownership, contents, and causal dependencies against the pinned pristine corpus; the weak profile checks only final outcomes.",
+    "permutation": "Every observed event list is reversed to prove that array order does not affect graph equivalence.",
+    "scoring": "A mutation is killed only when a metric passes on the original and fails on the mutated case.",
+    "reproducibility": "All evaluator inputs, schema bytes, sorted mutation IDs, coverage digests, summaries, and checked-in results are pinned."
+  },
+  "contents": {"cases": 6, "agents": 17, "agent_declarations": 17, "tools": 5, "events": 41, "tool_calls": 11, "side_effecting_calls": 3, "mutations": 294},
+  "topologies": ["nested-delegation", "parallel-fan-out-fan-in", "parallel-shared-state", "retry-after-timeout", "same-tool-multiple-agents", "sequential-side-effects"],
+  "operator_counts": {
+    "agent.authorization_violated": 11,
+    "coordination.aggregation_dropped": 3,
+    "coordination.aggregation_premature": 3,
+    "coordination.branch_abandoned": 11,
+    "coordination.delegation_duplicated": 11,
+    "coordination.dependency_removed": 35,
+    "coordination.loop_inserted": 11,
+    "coordination.result_dropped": 11,
+    "coordination.result_duplicated": 11,
+    "coordination.result_misattributed": 11,
+    "coordination.result_request_changed": 11,
+    "coordination.state_revision_stale": 5,
+    "coordination.state_update_corrupted": 5,
+    "coordination.state_update_dropped": 5,
+    "delegation.context_corrupted": 11,
+    "delegation.context_omitted": 11,
+    "delegation.recipient_changed": 11,
+    "delegation.removed": 11,
+    "recovery.false_success": 11,
+    "response.omitted": 6,
+    "response.replaced": 6,
+    "tool.argument_omitted": 11,
+    "tool.argument_type_changed": 11,
+    "tool.argument_unexpected": 11,
+    "tool.arguments_changed": 11,
+    "tool.identifier_swapped": 8,
+    "tool.output_corrupted": 11,
+    "tool.removed": 11,
+    "tool.side_effect_duplicated": 3,
+    "tool.unknown_added": 6
+  },
+  "profiles": {
+    "strong": {
+      "evaluator": "evaluator.py", "reverse_events": false, "expected_exit_code": 0, "expected_gate_passed": true,
+      "expected_summary": {"cases": 6, "mutants": 294, "killed": 294, "survived": 0, "errors": 0, "kill_rate": 1.0, "critical_survivors": 0},
+      "operator_status_digest": "ab87650a3ff615b97d10c261ce352c4703528d6e2226e5ae7f521ea39bc37798",
+      "category_coverage_digest": "2b36519483bafecafbc17effc9504f71ca809092705e228bf94d14bbe2db7b45"
+    },
+    "output-only": {
+      "evaluator": "weak_evaluator.py", "reverse_events": false, "expected_exit_code": 1, "expected_gate_passed": false,
+      "expected_summary": {"cases": 6, "mutants": 294, "killed": 23, "survived": 271, "errors": 0, "kill_rate": 0.078231, "critical_survivors": 181},
+      "operator_status_digest": "32e041693d9e69421de27d11b722c89c843116b6d883cdd6401c8953cc63de8c",
+      "category_coverage_digest": "834b787bc3ea38158e98900af0a011b8fa7f760a09175fee1c844bff4f38c19f"
+    },
+    "permuted-strong": {
+      "evaluator": "evaluator.py", "reverse_events": true, "expected_exit_code": 0, "expected_gate_passed": true,
+      "expected_summary": {"cases": 6, "mutants": 294, "killed": 294, "survived": 0, "errors": 0, "kill_rate": 1.0, "critical_survivors": 0},
+      "operator_status_digest": "ab87650a3ff615b97d10c261ce352c4703528d6e2226e5ae7f521ea39bc37798",
+      "category_coverage_digest": "2b36519483bafecafbc17effc9504f71ca809092705e228bf94d14bbe2db7b45"
+    }
+  }
+}

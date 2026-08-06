@@ -13,8 +13,12 @@ mendmark audit-json examples/order_agent_suite.json \
   --output /tmp/mendmark-json-report.json
 ```
 
-The command produces the same 13 controlled faults as the DeepEval example and
+The command produces the same 19 controlled faults as the DeepEval example and
 makes no model or network calls.
+
+Historical golden sets use `--mutation-profile agent-eval-v1` or
+`--mutation-profile multi-agent-v1` to replay their immutable operator
+inventories. Customer audits should keep the default `current` profile.
 
 ## Suite format
 
@@ -116,6 +120,11 @@ metadata; do not place secrets or customer content in explicit version flags.
 
 Use `--junit path.xml` for test-report systems and `--sarif path.sarif` for code
 scanning systems. Both formats contain only the privacy-safe audit metadata.
+
+Suite inputs are limited to 64 MB, 64 JSON nesting levels, one million JSON
+nodes, and 512 characters for protocol identifiers and metric names. Evaluator
+requests and responses have independent byte limits; timeouts, mutation caps,
+and batch sizes provide additional cost controls.
 
 After accepting a full baseline, `--changed-tools-only` runs original cases and
 mutations only for tools whose declaration digest is new or changed. It still

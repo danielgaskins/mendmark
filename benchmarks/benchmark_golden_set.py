@@ -17,7 +17,7 @@ from pathlib import Path
 
 from mendmark import __version__
 from mendmark.json_adapter import load_json_suite
-from mendmark.mutations import generate_mutants
+from mendmark.mutations import AGENT_EVAL_V1_MUTATIONS, generate_mutants
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -61,9 +61,23 @@ def run_golden_set(
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     suite_path = golden_root / manifest["suite"]
     _expect("suite SHA-256", _digest(suite_path), manifest["suite_sha256"])
+    asset_paths = {
+        "evaluator.py": golden_root / "evaluator.py",
+        "README.md": golden_root / "README.md",
+        "suite-v1.schema.json": (
+            PROJECT_ROOT / "src/mendmark/schemas/suite-v1.schema.json"
+        ),
+        "report-v1.schema.json": (
+            PROJECT_ROOT / "src/mendmark/schemas/report-v1.schema.json"
+        ),
+    }
+    for name, expected_digest in manifest["assets"].items():
+        _expect(f"{name} SHA-256", _digest(asset_paths[name]), expected_digest)
 
     suite = load_json_suite(suite_path)
-    mutants = generate_mutants(suite.cases, suite.tools)
+    mutants = generate_mutants(
+        suite.cases, suite.tools, AGENT_EVAL_V1_MUTATIONS
+    )
     _expect("case count", len(suite.cases), manifest["contents"]["cases"])
     _expect("tool count", len(suite.tools), manifest["contents"]["tools"])
     _expect("mutation count", len(mutants), manifest["contents"]["mutations"])
@@ -120,6 +134,8 @@ def run_golden_set(
                     str(report_path),
                     "--suite-version",
                     manifest["version"],
+                    "--mutation-profile",
+                    "agent-eval-v1",
                 ]
                 started = time.perf_counter()
                 completed = subprocess.run(
@@ -169,6 +185,26 @@ def run_golden_set(
                 "gate_passed": report["gate"]["passed"],
                 "operator_statuses": statuses,
             }
+
+    checked_in = json.loads(
+        (golden_root / "results.json").read_text(encoding="utf-8")
+    )
+    for profile, measured in measured_profiles.items():
+        _expect(
+            f"{profile} checked-in summary",
+            measured["summary"],
+            checked_in["profiles"][profile]["summary"],
+        )
+        _expect(
+            f"{profile} checked-in gate",
+            measured["gate_passed"],
+            checked_in["profiles"][profile]["gate_passed"],
+        )
+        _expect(
+            f"{profile} checked-in operator statuses",
+            measured["operator_statuses"],
+            checked_in["profiles"][profile]["operator_statuses"],
+        )
 
     return {
         "dataset": manifest["name"],

@@ -1,0 +1,11 @@
+{
+  "dataset": "Mendmark Multi-Agent Golden Set",
+  "dataset_version": "multi-agent-v2",
+  "contents": {"cases": 6, "agents": 17, "agent_declarations": 17, "tools": 5, "events": 41, "tool_calls": 11, "side_effecting_calls": 3, "mutations": 294},
+  "profiles": {
+    "output-only": {"gate_passed": false, "summary": {"cases": 6, "mutants": 294, "killed": 23, "survived": 271, "errors": 0, "kill_rate": 0.078231, "critical_survivors": 181}},
+    "permuted-strong": {"gate_passed": true, "summary": {"cases": 6, "mutants": 294, "killed": 294, "survived": 0, "errors": 0, "kill_rate": 1.0, "critical_survivors": 0}},
+    "strong": {"gate_passed": true, "summary": {"cases": 6, "mutants": 294, "killed": 294, "survived": 0, "errors": 0, "kill_rate": 1.0, "critical_survivors": 0}}
+  },
+  "contract_passed": true
+}

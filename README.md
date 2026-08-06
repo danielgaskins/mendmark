@@ -47,7 +47,7 @@ mendmark audit examples/order_agent_suite.py \
 ```text
 Mendmark agent-eval audit
 Cases: 1
-Mutations: 13  Killed: 13  Survived: 0  Errors: 0
+Mutations: 19  Killed: 19  Survived: 0  Errors: 0
 Mutation kill rate: 100.0%
 New tools: lookup_order, refund_order
 Gate: PASS
@@ -65,12 +65,12 @@ mendmark audit-json examples/multi_agent_suite.json \
 
 ## See the blind spot in two minutes
 
-**[▶ Watch the narrated weak-eval demonstration](docs/assets/mendmark-weak-eval-demo.mp4)**
+**[▶ Watch the narrated weak-eval demonstration (original v1 fault inventory)](docs/assets/mendmark-weak-eval-demo.mp4)**
 
-A refund-agent test checks only the final sentence. Mendmark finds that 9 of 13
+A refund-agent test checks only the final sentence. Mendmark finds that 15 of 19
 faults escape—including a wrong refund amount and a duplicated refund. A
 complete evaluator checks the calls, arguments, results, and response, killing
-all 13.
+all 19.
 
 ## Agent Eval Golden Set
 
@@ -107,15 +107,16 @@ Review the [manifest](golden/agent-eval-v1/manifest.json),
 benchmark is deterministic, offline, and makes no model calls.
 
 Native coordination behavior has its own reviewable
-[Multi-Agent Golden Set](golden/multi-agent-v1/): **3 agents, 9 causal events,
-44 pinned mutations, and 44/44 killed** by the complete reference evaluator.
+[Multi-Agent Golden Set v2](golden/multi-agent-v2/): **6 workflows, 17 agent
+declarations, 41 causal events, 30 operators, and 294/294 mutations killed** by
+the complete reference evaluator.
 
 ```bash
-python benchmarks/benchmark_multi_agent_golden_set.py
+python benchmarks/benchmark_multi_agent_golden_set_v2.py
 ```
 
-For contrast, the included output-only evaluator detects just **5/44** and
-leaves **39 survivors, 27 critical**. Mendmark groups those blind spots by
+For contrast, the v2 output-only evaluator detects just **23/294** and leaves
+**271 survivors, 181 critical**. Mendmark groups those blind spots by
 category and pinpoints the affected agent, event, and tool using privacy-safe
 identifiers. See the [multi-agent guide](docs/multi-agent.md) for both commands.
 
@@ -147,7 +148,8 @@ delegation loop. Independent parallel branches are not forced into an arbitrary
 wall-clock order.
 
 The included three-agent reference suite has 9 events across parallel billing
-and risk branches. Its complete evaluator kills all 44 applicable mutations.
+and risk branches. Its complete evaluator kills all 64 currently applicable
+mutations. The broader v2 golden set covers six topologies and kills 294/294.
 See the [multi-agent guide](docs/multi-agent.md) and reviewable
 [JSON suite](examples/multi_agent_suite.json).
 
@@ -321,6 +323,13 @@ and [open a privacy-safe Mendmark pilot request](https://github.com/danielgaskin
 Do not include prompts, traces, payloads, credentials, or customer data in a
 public issue.
 
+Completed pilots use the machine-validated
+[design-partner evidence contract](pilot/) to record time-to-value, mutation
+realism, equivalent faults, discovered/remediated blind spots, runtime, cost,
+and CI retention without storing customer content. Until that external utility
+gate passes, golden-set results are engine evidence—not a claim of universal
+agent safety or customer validation.
+
 ## Existing ML integrity pack
 
 Mendmark started as a benchmark for coding agents that repair ML pipelines. That
@@ -337,7 +346,7 @@ and the [ML evaluation card](https://github.com/danielgaskins/mendmark/blob/main
 
 ## Current boundary
 
-Version 0.4 is a local, open-source engine. It does not yet provide a hosted
+Version 0.5 is a local, open-source engine. It does not yet provide a hosted
 dashboard, team accounts, remote trace ingestion, or a secrets service. The
 planned control plane is described in [the product design](https://github.com/danielgaskins/mendmark/blob/main/docs/product.md).
 

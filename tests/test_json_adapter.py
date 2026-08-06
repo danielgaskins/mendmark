@@ -31,8 +31,8 @@ def test_json_suite_runs_complete_offline_audit(tmp_path: Path) -> None:
 
     assert result == 0
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    assert report["summary"]["mutants"] == 13
-    assert report["summary"]["killed"] == 13
+    assert report["summary"]["mutants"] == 19
+    assert report["summary"]["killed"] == 19
     assert report["provenance"]["adapter"] == "json-command"
     assert report["provenance"]["mendmark_version"] == __version__
     assert report["provenance"]["policy_digest"].startswith("sha256:")

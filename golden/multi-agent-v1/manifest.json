@@ -4,6 +4,12 @@
   "suite": "../../examples/multi_agent_suite.json",
   "evaluator": "../../examples/multi_agent_evaluator.py",
   "suite_sha256": "dab964dd9fec9746cce16c5194e4dccaef5e6742d251d4f7f2b506d8640f1aea",
+  "assets": {
+    "evaluator.py": "ad377a246cf12a455d73c1f1ce9be61eb1dd40d63d814a274954856868ab7ef2",
+    "README.md": "382075c382f1908d05c8e49c7ba9c5739bef3b4943a239f237b4b1d97a93f81c",
+    "suite-v2.schema.json": "8fa6edaad5d6b1052fbf0ee24c8403a37fb400580b2c88086ff009e033e25278",
+    "report-v1.schema.json": "c8f4f0c495fdbbe16ba3f4b0517817df715c204fbf9c4fb2c990b4dc0ed5073e"
+  },
   "mutation_id_digest": "ea57f51d8247093d77e97de78ba8119a17dfc2dabfa3e527de366604dc270da4",
   "contents": {
     "cases": 1,
