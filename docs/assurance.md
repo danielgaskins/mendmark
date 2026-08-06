@@ -8,7 +8,8 @@ The automated assurance suite checks that:
 - A built wheel installs without network dependency resolution and works from a
   directory outside the source checkout.
 - `mendmark --version`, `--help`, packaged tasks, packaged schemas, and the
-  complete JSON audit journey work from that clean installation.
+  complete single- and multi-agent JSON audit journeys work from that clean
+  installation.
 - Reports, console output, JUnit, and SARIF do not expose canary values placed in
   prompts, answers, metadata, tags, tool arguments, tool outputs, or descriptions.
 - Repeated audits preserve mutation IDs, ordering, decisions, JUnit, SARIF, and
@@ -19,6 +20,11 @@ The automated assurance suite checks that:
   traceback.
 - The Agent Eval Golden Set preserves the exact case corpus, mutation-ID digest,
   applicability counts, evaluator outcomes, and gate decisions across releases.
+- The Multi-Agent Golden Set pins agent and tool contracts, graph shape,
+  mutation identities, all 44 outcomes, and the release-gate decision.
+- A 25-agent, 100-event graph generates stable, unique mutation IDs, while
+  evaluator batching preserves result order and request limits fail before
+  spawning customer code.
 
 Run the unit and user-contract suite with:
 

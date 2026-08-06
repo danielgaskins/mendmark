@@ -18,7 +18,7 @@ makes no model or network calls.
 
 ## Suite format
 
-The canonical JSON Schema ships in
+The single-agent JSON Schema ships in
 `src/mendmark/schemas/suite-v1.schema.json`. A suite has this shape:
 
 ```json
@@ -60,6 +60,11 @@ keys, trace structure, required tool arguments, and basic JSON Schema argument
 types. Validation errors include a JSON location but never echo argument
 values.
 
+Native multi-agent suites use `schema_version: "2.0"` and the event-graph fields
+defined in `suite-v2.schema.json`. The CLI selects protocol `2.0` automatically
+when it evaluates a multi-agent case. See the [multi-agent guide](multi-agent.md)
+and the complete [`multi_agent_suite.json`](../examples/multi_agent_suite.json).
+
 ## Evaluator command protocol
 
 Mendmark starts the configured command once for the complete audit. It does not
@@ -83,7 +88,7 @@ one response to stdout:
 }
 ```
 
-The request and response schemas ship as
+The `1.0` request and response schemas ship as
 `src/mendmark/schemas/evaluator-request-v1.schema.json` and
 `src/mendmark/schemas/evaluator-response-v1.schema.json`. Metric names must be
 unique within each evaluation. Evaluation IDs must be echoed exactly and results
@@ -92,6 +97,11 @@ oversized response, or malformed response
 is an infrastructure error and exits with code 2; it never counts as a killed
 mutation. The default batch timeout is 60 seconds and can be set to a value
 greater than 0 and at most 3600 seconds with `--evaluator-timeout`.
+
+Protocol `2.0` uses `evaluator-request-v2.schema.json` and
+`evaluator-response-v2.schema.json`. Its response rules are identical; its case
+object additionally preserves agents, events, targets, dependencies, and event
+payloads. An evaluator must echo the request's protocol version exactly.
 
 The evaluator receives case content because it must judge each mutation. The
 Mendmark report still excludes prompts, answers, tool arguments, and tool
@@ -115,3 +125,9 @@ to cover evaluator or case changes unrelated to tool declarations.
 Use `--maximum-mutants N` to abort before any evaluator call when generation
 exceeds an approved budget. This controls mutation volume; provider cost per
 evaluation remains the evaluator owner's responsibility.
+
+By default Mendmark sends one complete batch to minimize evaluator startup
+cost. Large suites can set `--evaluator-batch-size N` to bound each process and
+request. Serialized requests are capped at 64 MB by default; use
+`--evaluator-maximum-request-bytes` only after reviewing the evaluator's memory
+budget. The timeout applies independently to each batch.

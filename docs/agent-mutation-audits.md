@@ -41,6 +41,18 @@ and fails the gate. An evaluator error does not count as a successful detection.
 | `recovery.false_success` | Reports success after one tool fails | Critical |
 | `response.omitted` | Removes the final response | High |
 | `response.replaced` | Replaces the response with a generic claim | High |
+| `delegation.removed` | Removes a required delegation | Critical |
+| `delegation.recipient_changed` | Routes work to another agent | Critical |
+| `delegation.context_omitted` | Removes handoff context | High |
+| `delegation.context_corrupted` | Changes one handoff value | Critical |
+| `agent.authorization_violated` | Moves a tool call to an unauthorized agent | Critical |
+| `coordination.result_dropped` | Removes a specialist result | Critical |
+| `coordination.result_misattributed` | Sends a result to the wrong agent | High |
+| `coordination.dependency_removed` | Removes a causal dependency | High |
+| `coordination.state_update_dropped` | Removes a shared-state update | Critical |
+| `coordination.state_update_corrupted` | Changes a shared-state value | Critical |
+| `coordination.aggregation_dropped` | Removes a multi-branch aggregation | Critical |
+| `coordination.loop_inserted` | Inserts a delegation loop | Critical |
 
 Each applicable operator creates a separate mutant for each tool call. That
 makes the report useful for a rollout. A team can see that its evals catch a bad
@@ -52,7 +64,7 @@ The default policy fails when:
 
 - Mutation kill rate is below 80 percent.
 - Any critical mutation survives.
-- A declared tool has no case coverage.
+- A declared tool or agent has no case coverage.
 - A case uses an undeclared tool or violates a basic tool input contract.
 - An original case fails its own eval suite.
 - A mutation that the accepted baseline killed now survives or errors.
@@ -91,6 +103,9 @@ important failures that the built-ins do not represent.
 
 Custom operators are loaded as trusted local code and validated for stable,
 unique names and mutation IDs. See [custom mutation plugins](custom-mutations.md).
+
+Native multi-agent cases use a causal event graph so independent parallel work
+does not need an arbitrary total order. See [multi-agent mutation audits](multi-agent.md).
 
 ## Data boundary
 

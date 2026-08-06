@@ -11,6 +11,10 @@
       "type": "object",
       "additionalProperties": {"$ref": "#/$defs/digest"}
     },
+    "agents": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/digest"}
+    },
     "mutations": {
       "type": "object",
       "additionalProperties": {"enum": ["killed", "survived", "error"]}

@@ -6,7 +6,7 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Protocol
 
-from .agent_cases import AgentCase, ToolSpec
+from .agent_cases import AgentCase, ToolSpec, case_graph_issues
 from .mutations import Mutant, MutationOperator, generate_mutants
 
 
@@ -94,7 +94,7 @@ def _tool_report(
     tested = {
         call.name
         for case in cases
-        for call in case.tools_called + case.expected_tools
+        for call in case.actual_tool_calls() + case.expected_tool_calls()
     }
     declared = set(current)
     previous = previous_tools or {}
@@ -143,8 +143,8 @@ def _tool_contract_issues(
     issues: list[dict[str, object]] = []
     for case in cases:
         for source, calls in (
-            ("actual", case.tools_called),
-            ("expected", case.expected_tools),
+            ("actual", case.actual_tool_calls()),
+            ("expected", case.expected_tool_calls()),
         ):
             for index, call in enumerate(calls):
                 tool = declared.get(call.name)
@@ -216,6 +216,112 @@ def _tool_mutation_coverage(
     return coverage
 
 
+def _mutation_coverage(
+    identifiers: tuple[str, ...],
+    mutation_results: list[dict[str, object]],
+    field: str,
+) -> dict[str, dict[str, object]]:
+    coverage: dict[str, dict[str, object]] = {}
+    for identifier in identifiers:
+        relevant = [item for item in mutation_results if item.get(field) == identifier]
+        killed = sum(item["status"] == "killed" for item in relevant)
+        errors = sum(item["status"] == "error" for item in relevant)
+        survived = sum(item["status"] == "survived" for item in relevant)
+        evaluated = len(relevant) - errors
+        coverage[identifier] = {
+            "mutants": len(relevant),
+            "killed": killed,
+            "survived": survived,
+            "errors": errors,
+            "kill_rate": round(killed / evaluated, 6) if evaluated else None,
+        }
+    return coverage
+
+
+def _agent_report(
+    cases: tuple[AgentCase, ...],
+    tools: tuple[ToolSpec, ...],
+    mutation_results: list[dict[str, object]],
+    previous_agents: dict[str, str] | None,
+) -> dict[str, object] | None:
+    multi_cases = tuple(case for case in cases if case.is_multi_agent)
+    if not multi_cases:
+        return None
+    definitions: dict[str, set[str]] = {}
+    agents_by_id = {}
+    for case in multi_cases:
+        for agent in case.agents:
+            definitions.setdefault(agent.agent_id, set()).add(agent.digest)
+            agents_by_id.setdefault(agent.agent_id, agent)
+    declared = sorted(definitions)
+    current = {agent_id: agent.digest for agent_id, agent in agents_by_id.items()}
+    previous = previous_agents or {}
+    tested = sorted({
+        identifier
+        for case in multi_cases
+        for event in case.events + case.expected_events
+        for identifier in (event.actor_id, event.target_agent_id)
+        if identifier is not None
+    })
+    known_tools = {tool.name for tool in tools}
+    contract_issues: list[dict[str, str]] = []
+    for agent_id, digests in sorted(definitions.items()):
+        if len(digests) > 1:
+            contract_issues.append({
+                "case_id": "suite",
+                "agent_id": agent_id,
+                "issue": "agent declaration is inconsistent across cases",
+            })
+    for case in multi_cases:
+        contract_issues.extend(case_graph_issues(case))
+        agents = {agent.agent_id: agent for agent in case.agents}
+        for agent in case.agents:
+            for tool_name in agent.allowed_tools:
+                if tool_name not in known_tools:
+                    contract_issues.append({
+                        "case_id": case.case_id,
+                        "agent_id": agent.agent_id,
+                        "tool_name": tool_name,
+                        "issue": "agent allows an undeclared tool",
+                    })
+        for trace, events in (
+            ("actual", case.events),
+            ("expected", case.expected_events),
+        ):
+            for event in events:
+                if event.kind != "tool_call" or event.tool_call is None:
+                    continue
+                agent = agents.get(event.actor_id)
+                if agent is not None and event.tool_call.name not in agent.allowed_tools:
+                    contract_issues.append({
+                        "case_id": case.case_id,
+                        "trace": trace,
+                        "event_id": event.event_id,
+                        "agent_id": event.actor_id,
+                        "tool_name": event.tool_call.name,
+                        "issue": "agent is not authorized to call tool",
+                    })
+    return {
+        "declared": declared,
+        "tested": tested,
+        "untested": sorted(set(declared) - set(tested)),
+        "cases": len(multi_cases),
+        "events": sum(len(case.events) for case in multi_cases),
+        "added_since_baseline": sorted(set(current) - set(previous)),
+        "removed_since_baseline": sorted(set(previous) - set(current)),
+        "changed_since_baseline": sorted(
+            agent_id
+            for agent_id in set(current) & set(previous)
+            if current[agent_id] != previous[agent_id]
+        ),
+        "schema_digests": current,
+        "contract_issues": contract_issues,
+        "mutation_coverage": _mutation_coverage(
+            tuple(declared), mutation_results, "agent_id"
+        ),
+    }
+
+
 def run_audit(
     *,
     cases: tuple[AgentCase, ...],
@@ -225,6 +331,7 @@ def run_audit(
     operators: tuple[MutationOperator, ...] | None = None,
     previous_tools: dict[str, str] | None = None,
     previous_mutations: dict[str, str] | None = None,
+    previous_agents: dict[str, str] | None = None,
     mutation_case_ids: frozenset[str] | None = None,
     maximum_mutants: int | None = None,
 ) -> dict[str, object]:
@@ -234,6 +341,14 @@ def run_audit(
         raise ValueError("agent case ids must be unique")
     if len({tool.name for tool in tools}) != len(tools):
         raise ValueError("tool names must be unique")
+    for case in cases:
+        graph_issues = case_graph_issues(case)
+        if graph_issues:
+            issue = graph_issues[0]
+            raise ValueError(
+                f"invalid multi-agent graph in case {case.case_id!r}: "
+                f"{issue['issue']}"
+            )
     if maximum_mutants is not None and (
         isinstance(maximum_mutants, bool) or maximum_mutants < 1
     ):
@@ -333,6 +448,21 @@ def run_audit(
                 "status": status,
                 "killed_by": sorted(killed_by),
                 "evaluation_errors": sorted(evaluation_errors),
+                **(
+                    {"agent_id": mutant.agent_id}
+                    if mutant.agent_id is not None
+                    else {}
+                ),
+                **(
+                    {"target_agent_id": mutant.target_agent_id}
+                    if mutant.target_agent_id is not None
+                    else {}
+                ),
+                **(
+                    {"event_id": mutant.event_id}
+                    if mutant.event_id is not None
+                    else {}
+                ),
             }
         )
 
@@ -360,6 +490,9 @@ def run_audit(
     tools_report["mutation_coverage"] = _tool_mutation_coverage(
         tools, mutation_results
     )
+    agents_report = _agent_report(
+        cases, tools, mutation_results, previous_agents
+    )
     gate_failures: list[str] = []
     if mutants and kill_rate < policy.minimum_kill_rate:
         gate_failures.append(
@@ -374,9 +507,25 @@ def run_audit(
         gate_failures.append(
             f"{len(tools_report['untested'])} declared tool(s) have no eval coverage"
         )
+    if (
+        policy.fail_on_untested_tools
+        and agents_report is not None
+        and agents_report["untested"]
+    ):
+        gate_failures.append(
+            f"{len(agents_report['untested'])} declared agent(s) have no eval coverage"
+        )
     if policy.fail_on_tool_contract_issues and tools_report["contract_issues"]:
         gate_failures.append(
             f"{len(tools_report['contract_issues'])} tool contract issue(s) found"
+        )
+    if (
+        policy.fail_on_tool_contract_issues
+        and agents_report is not None
+        and agents_report["contract_issues"]
+    ):
+        gate_failures.append(
+            f"{len(agents_report['contract_issues'])} agent contract issue(s) found"
         )
     if baseline_issues:
         gate_failures.append(
@@ -387,7 +536,7 @@ def run_audit(
             f"{len(regressions)} previously detected mutation(s) now survive or error"
         )
 
-    return {
+    report = {
         "schema_version": "1.0",
         "summary": {
             "cases": len(cases),
@@ -414,3 +563,6 @@ def run_audit(
         "tools": tools_report,
         "mutations": mutation_results,
     }
+    if agents_report is not None:
+        report["agents"] = agents_report
+    return report

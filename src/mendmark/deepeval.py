@@ -158,6 +158,7 @@ def agent_case_from_deepeval(test_case: Any, *, index: int = 0) -> AgentCase:
 
 def deepeval_case_from_agent(case: AgentCase) -> Any:
     from deepeval.test_case import LLMTestCase, ToolCall
+    from .json_adapter import case_to_json
 
     def convert(call: ToolCallRecord) -> Any:
         return ToolCall(
@@ -167,13 +168,20 @@ def deepeval_case_from_agent(case: AgentCase) -> Any:
             output=call.output,
         )
 
+    metadata = {**case.metadata, "mendmark_case_id": case.case_id}
+    if case.is_multi_agent:
+        serialized = case_to_json(case)
+        metadata["mendmark_multi_agent"] = {
+            key: serialized[key]
+            for key in ("root_agent_id", "agents", "events", "expected_events")
+        }
     return LLMTestCase(
         input=case.input,
         actual_output=case.actual_output,
         expected_output=case.expected_output,
-        tools_called=[convert(call) for call in case.tools_called],
-        expected_tools=[convert(call) for call in case.expected_tools],
-        metadata={**case.metadata, "mendmark_case_id": case.case_id},
+        tools_called=[convert(call) for call in case.actual_tool_calls()],
+        expected_tools=[convert(call) for call in case.expected_tool_calls()],
+        metadata=metadata,
         tags=list(case.tags),
         name=case.case_id,
     )
@@ -281,7 +289,9 @@ def load_deepeval_suite(path: str | Path) -> LoadedDeepEvalSuite:
         raise ValueError("suite must define get_metrics()")
     raw_cases = list(module.get_cases())
     cases = tuple(
-        agent_case_from_deepeval(case, index=index)
+        case
+        if isinstance(case, AgentCase)
+        else agent_case_from_deepeval(case, index=index)
         for index, case in enumerate(raw_cases)
     )
     tools = tuple(_tool_spec(value) for value in getattr(module, "TOOLS", ()))

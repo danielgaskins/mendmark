@@ -18,20 +18,23 @@
           "results": {
             "type": "array",
             "minItems": 1,
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "required": ["name", "passed"],
-              "properties": {
-                "name": {"type": "string", "minLength": 1},
-                "score": {"type": ["number", "null"]},
-                "passed": {"type": "boolean"},
-                "reason": {"type": ["string", "null"], "minLength": 1},
-                "error": {"type": ["string", "null"], "minLength": 1}
-              }
-            }
+            "items": {"$ref": "#/$defs/result"}
           }
         }
+      }
+    }
+  },
+  "$defs": {
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "passed"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "score": {"type": ["number", "null"]},
+        "passed": {"type": "boolean"},
+        "reason": {"type": ["string", "null"], "minLength": 1},
+        "error": {"type": ["string", "null"], "minLength": 1}
       }
     }
   }

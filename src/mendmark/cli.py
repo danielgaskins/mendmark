@@ -116,6 +116,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=60,
         help="batch evaluator timeout in seconds (default: 60)",
     )
+    audit_json.add_argument(
+        "--evaluator-batch-size",
+        type=int,
+        help="maximum cases per evaluator process; default sends one complete batch",
+    )
+    audit_json.add_argument(
+        "--evaluator-maximum-request-bytes",
+        type=int,
+        default=64_000_000,
+        help="maximum serialized evaluator request size (default: 64000000)",
+    )
     _audit_arguments(audit_json)
 
     sign = subparsers.add_parser(
@@ -141,17 +152,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _load_baseline(path: Path) -> dict[str, dict[str, str]]:
     if not path.exists():
-        return {"tools": {}, "mutations": {}}
+        return {"tools": {}, "agents": {}, "mutations": {}}
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("schema_version") != "1.0":
         raise RunnerError("invalid Mendmark baseline schema_version")
-    unknown = sorted(set(data) - {"schema_version", "tools", "mutations", "accepted_from"})
+    unknown = sorted(
+        set(data)
+        - {"schema_version", "tools", "agents", "mutations", "accepted_from"}
+    )
     if unknown:
         raise RunnerError(
             "invalid Mendmark baseline field(s): " + ", ".join(unknown)
         )
     loaded: dict[str, dict[str, str]] = {}
-    for field in ("tools", "mutations"):
+    for field in ("tools", "agents", "mutations"):
         values = data.get(field, {})
         if not isinstance(values, dict) or not all(
             isinstance(key, str) and isinstance(value, str)
@@ -163,9 +177,10 @@ def _load_baseline(path: Path) -> dict[str, dict[str, str]]:
         digest.startswith("sha256:")
         and len(digest) == 71
         and all(character in "0123456789abcdef" for character in digest[7:])
-        for digest in loaded["tools"].values()
+        for digest in list(loaded["tools"].values())
+        + list(loaded["agents"].values())
     ):
-        raise RunnerError("invalid Mendmark tool digest in baseline")
+        raise RunnerError("invalid Mendmark tool or agent digest in baseline")
     if not all(
         status in {"killed", "survived", "error"}
         for status in loaded["mutations"].values()
@@ -231,6 +246,21 @@ def _print_audit(report: dict[str, object], output: Path) -> None:
         print("New tools: " + ", ".join(tools["added_since_baseline"]))
     if tools["contract_issues"]:
         print(f"Tool contract issues: {len(tools['contract_issues'])}")
+    agents = report.get("agents")
+    if agents:
+        print(
+            f"Agents: {len(agents['declared'])}  "
+            f"Events: {agents['events']}  "
+            f"Multi-agent cases: {agents['cases']}"
+        )
+        if agents["untested"]:
+            print("Untested agents: " + ", ".join(agents["untested"]))
+        if agents["contract_issues"]:
+            print(f"Agent contract issues: {len(agents['contract_issues'])}")
+        if agents["added_since_baseline"]:
+            print("New agents: " + ", ".join(agents["added_since_baseline"]))
+        if agents["changed_since_baseline"]:
+            print("Changed agents: " + ", ".join(agents["changed_since_baseline"]))
     regressed = report["regressions"]["regressed"]
     if regressed:
         print("Regressed mutations:")
@@ -335,6 +365,11 @@ def _finish_audit(
             {
                 "schema_version": "1.0",
                 "tools": report["tools"]["schema_digests"],
+                **(
+                    {"agents": report["agents"]["schema_digests"]}
+                    if "agents" in report
+                    else {}
+                ),
                 "mutations": {
                     item["mutant_id"]: item["status"]
                     for item in report["mutations"]
@@ -424,6 +459,9 @@ def main(argv: list[str] | None = None) -> int:
                 evaluator = JsonCommandEvaluator(
                     args.evaluator_command,
                     timeout_seconds=args.evaluator_timeout,
+                    batch_size=args.evaluator_batch_size,
+                    protocol_version=suite.schema_version,
+                    maximum_request_bytes=args.evaluator_maximum_request_bytes,
                 )
                 operators = DEFAULT_MUTATIONS
                 adapter = "json-command"
@@ -446,7 +484,8 @@ def main(argv: list[str] | None = None) -> int:
                     for case in suite.cases
                     if any(
                         call.name in changed_set
-                        for call in case.tools_called + case.expected_tools
+                        for call in case.actual_tool_calls()
+                        + case.expected_tool_calls()
                     )
                 )
                 previous_mutations = {
@@ -464,6 +503,7 @@ def main(argv: list[str] | None = None) -> int:
                 policy=_effective_policy(args, suite.policy),
                 operators=operators,
                 previous_tools=baseline["tools"],
+                previous_agents=baseline["agents"],
                 previous_mutations=previous_mutations,
                 mutation_case_ids=mutation_case_ids,
                 maximum_mutants=args.maximum_mutants,

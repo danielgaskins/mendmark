@@ -90,6 +90,10 @@ def main() -> int:
                 ("golden", "agent-eval-v1", "manifest.json"),
                 ("golden", "agent-eval-v1", "suite.json"),
                 ("golden", "agent-eval-v1", "results.json"),
+                ("golden", "multi-agent-v1", "manifest.json"),
+                ("golden", "multi-agent-v1", "results.json"),
+                ("examples", "multi_agent_suite.json"),
+                ("examples", "multi_agent_evaluator.py"),
             }
             missing = sorted(required - members)
             if missing:
@@ -117,8 +121,8 @@ def main() -> int:
             cwd=workspace,
             env=clean_env,
         ).strip()
-        if schema_count != "5":
-            raise RuntimeError(f"installed wheel exposed {schema_count} schemas, expected 5")
+        if schema_count != "8":
+            raise RuntimeError(f"installed wheel exposed {schema_count} schemas, expected 8")
 
         for name in (
             "order_agent_suite.json",
@@ -147,6 +151,34 @@ def main() -> int:
             raise RuntimeError("clean-wheel audit did not produce the expected passing report")
         if "Gate: PASS" not in output:
             raise RuntimeError("clean-wheel audit did not present a clear passing result")
+
+        for name in ("multi_agent_suite.json", "multi_agent_evaluator.py"):
+            shutil.copyfile(project_root / "examples" / name, workspace / name)
+        multi_report_path = workspace / "multi-report.json"
+        multi_output = run(
+            [
+                str(mendmark),
+                "audit-json",
+                "multi_agent_suite.json",
+                "--evaluator-command",
+                f"{python} multi_agent_evaluator.py",
+                "--output",
+                str(multi_report_path),
+            ],
+            cwd=workspace,
+            env=clean_env,
+        )
+        multi_report = json.loads(multi_report_path.read_text(encoding="utf-8"))
+        if (
+            multi_report["gate"]["passed"] is not True
+            or multi_report["summary"]["mutants"] != 44
+            or len(multi_report["agents"]["declared"]) != 3
+        ):
+            raise RuntimeError(
+                "clean-wheel multi-agent audit did not produce the expected report"
+            )
+        if "Gate: PASS" not in multi_output:
+            raise RuntimeError("clean-wheel multi-agent audit did not clearly pass")
 
     print(f"Distribution assurance passed for {wheel.name} ({version}).")
     return 0

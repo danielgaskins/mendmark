@@ -74,5 +74,5 @@
   </g>
 
   <rect x="54" y="357" width="1092" height="44" rx="14" fill="#0f172a" stroke="#334155"/>
-  <text x="600" y="385" text-anchor="middle" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="600">24 golden cases  ·  263 pinned mutations  ·  deterministic and offline</text>
+  <text x="600" y="385" text-anchor="middle" fill="#cbd5e1" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="15" font-weight="600">25 golden cases  ·  307 pinned mutations  ·  deterministic and offline</text>
 </svg>

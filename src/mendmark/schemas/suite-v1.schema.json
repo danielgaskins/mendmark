@@ -29,6 +29,17 @@
     }
   },
   "$defs": {
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimum_kill_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "fail_on_critical_survivor": {"type": "boolean"},
+        "fail_on_untested_tools": {"type": "boolean"},
+        "fail_on_tool_contract_issues": {"type": "boolean"},
+        "fail_on_regression": {"type": "boolean"}
+      }
+    },
     "call": {
       "type": "object",
       "additionalProperties": false,

@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from .agent_cases import AgentCase, ToolCallRecord, ToolSpec
+from .agent_cases import AgentCase, AgentEvent, ToolCallRecord, ToolSpec
 
 
 @dataclass(frozen=True)
@@ -19,6 +19,9 @@ class Mutant:
     source_case_id: str
     case: AgentCase
     tool_name: str | None = None
+    agent_id: str | None = None
+    target_agent_id: str | None = None
+    event_id: str | None = None
 
 
 class MutationOperator(Protocol):
@@ -81,6 +84,9 @@ def _mutant(
     suffix: str,
     description: str | None = None,
     tool_name: str | None = None,
+    agent_id: str | None = None,
+    target_agent_id: str | None = None,
+    event_id: str | None = None,
 ) -> Mutant:
     return Mutant(
         mutant_id=f"{case.case_id}:{operator.name}:{suffix}",
@@ -91,7 +97,68 @@ def _mutant(
         source_case_id=case.case_id,
         case=changed,
         tool_name=tool_name,
+        agent_id=agent_id,
+        target_agent_id=target_agent_id,
+        event_id=event_id,
     )
+
+
+def _replace_event(case: AgentCase, index: int, event: AgentEvent) -> AgentCase:
+    return case.with_changes(
+        events=case.events[:index] + (event,) + case.events[index + 1 :]
+    )
+
+
+def _replace_event_call(
+    case: AgentCase, index: int, call: ToolCallRecord
+) -> AgentCase:
+    event = case.events[index]
+    return _replace_event(
+        case,
+        index,
+        AgentEvent(
+            event_id=event.event_id,
+            kind=event.kind,
+            actor_id=event.actor_id,
+            target_agent_id=event.target_agent_id,
+            depends_on=event.depends_on,
+            tool_call=call,
+            payload=event.payload,
+        ),
+    )
+
+
+def _remove_event(case: AgentCase, index: int) -> AgentCase:
+    """Remove an event while preserving downstream causal connectivity."""
+
+    removed = case.events[index]
+    replacement_dependencies = removed.depends_on
+    events: list[AgentEvent] = []
+    for event_index, event in enumerate(case.events):
+        if event_index == index:
+            continue
+        dependencies: list[str] = []
+        for dependency in event.depends_on:
+            candidates = (
+                replacement_dependencies
+                if dependency == removed.event_id
+                else (dependency,)
+            )
+            for candidate in candidates:
+                if candidate not in dependencies:
+                    dependencies.append(candidate)
+        events.append(
+            AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=tuple(dependencies),
+                tool_call=event.tool_call,
+                payload=event.payload,
+            )
+        )
+    return case.with_changes(events=tuple(events))
 
 
 def _changed_scalar(value: Any) -> Any:
@@ -125,6 +192,20 @@ class RemoveToolCall:
     severity = "critical"
 
     def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.events:
+            return [
+                _mutant(
+                    self,
+                    case,
+                    _remove_event(case, index),
+                    suffix=f"{event.event_id}-{event.tool_call.name}",
+                    tool_name=event.tool_call.name,
+                    agent_id=event.actor_id,
+                    event_id=event.event_id,
+                )
+                for index, event in enumerate(case.events)
+                if event.kind == "tool_call" and event.tool_call is not None
+            ]
         if not case.tools_called:
             return []
         mutants = []
@@ -149,6 +230,28 @@ class ChangeToolArguments:
     severity = "critical"
 
     def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.events:
+            mutants = []
+            for index, event in enumerate(case.events):
+                if event.kind != "tool_call" or event.tool_call is None:
+                    continue
+                call = event.tool_call
+                changed_call = ToolCallRecord(
+                    name=call.name,
+                    input_parameters=_mutate_parameters(call.input_parameters),
+                    output=call.output,
+                    description=call.description,
+                )
+                mutants.append(_mutant(
+                    self,
+                    case,
+                    _replace_event_call(case, index, changed_call),
+                    suffix=f"{event.event_id}-{call.name}",
+                    tool_name=call.name,
+                    agent_id=event.actor_id,
+                    event_id=event.event_id,
+                ))
+            return mutants
         if not case.tools_called:
             return []
         mutants = []
@@ -181,6 +284,28 @@ class CorruptToolOutput:
     severity = "critical"
 
     def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.events:
+            mutants = []
+            for index, event in enumerate(case.events):
+                if event.kind != "tool_call" or event.tool_call is None:
+                    continue
+                call = event.tool_call
+                changed_call = ToolCallRecord(
+                    name=call.name,
+                    input_parameters=call.input_parameters,
+                    output={"error": "mendmark_injected_tool_failure"},
+                    description=call.description,
+                )
+                mutants.append(_mutant(
+                    self,
+                    case,
+                    _replace_event_call(case, index, changed_call),
+                    suffix=f"{event.event_id}-{call.name}",
+                    tool_name=call.name,
+                    agent_id=event.actor_id,
+                    event_id=event.event_id,
+                ))
+            return mutants
         if not case.tools_called:
             return []
         mutants = []
@@ -214,6 +339,33 @@ class DuplicateSideEffect:
 
     def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
         side_effects = {tool.name for tool in tools if tool.side_effecting}
+        if case.events:
+            mutants = []
+            known_ids = {event.event_id for event in case.events}
+            for event in case.events:
+                call = event.tool_call
+                if event.kind != "tool_call" or call is None or call.name not in side_effects:
+                    continue
+                duplicate_id = f"{event.event_id}-mendmark-duplicate"
+                while duplicate_id in known_ids:
+                    duplicate_id += "-x"
+                duplicate = AgentEvent(
+                    event_id=duplicate_id,
+                    kind="tool_call",
+                    actor_id=event.actor_id,
+                    depends_on=(event.event_id,),
+                    tool_call=call,
+                )
+                mutants.append(_mutant(
+                    self,
+                    case,
+                    case.with_changes(events=case.events + (duplicate,)),
+                    suffix=f"{event.event_id}-{call.name}",
+                    tool_name=call.name,
+                    agent_id=event.actor_id,
+                    event_id=event.event_id,
+                ))
+            return mutants
         mutants = []
         for index, call in enumerate(case.tools_called):
             if call.name in side_effects:
@@ -235,6 +387,8 @@ class ReorderToolCalls:
     severity = "high"
 
     def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.events:
+            return []
         if len(case.tools_called) < 2:
             return []
         changed = tuple(reversed(case.tools_called))
@@ -262,6 +416,30 @@ class AddUnknownTool:
         while name in known:
             name += "_x"
         call = ToolCallRecord(name=name, input_parameters={}, output="ok")
+        if case.events:
+            actor_id = case.root_agent_id or case.agents[0].agent_id
+            event_id = "mendmark-undeclared-tool"
+            known_ids = {event.event_id for event in case.events}
+            while event_id in known_ids:
+                event_id += "-x"
+            event = AgentEvent(
+                event_id=event_id,
+                kind="tool_call",
+                actor_id=actor_id,
+                depends_on=(case.events[-1].event_id,) if case.events else (),
+                tool_call=call,
+            )
+            return [
+                _mutant(
+                    self,
+                    case,
+                    case.with_changes(events=case.events + (event,)),
+                    suffix=name,
+                    tool_name=name,
+                    agent_id=actor_id,
+                    event_id=event_id,
+                )
+            ]
         return [
             _mutant(
                 self,
@@ -280,6 +458,31 @@ class FalseSuccessAfterToolError:
     severity = "critical"
 
     def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.events:
+            mutants = []
+            for index, event in enumerate(case.events):
+                if event.kind != "tool_call" or event.tool_call is None:
+                    continue
+                call = event.tool_call
+                failed_call = ToolCallRecord(
+                    name=call.name,
+                    input_parameters=call.input_parameters,
+                    output={"error": "mendmark_injected_timeout"},
+                    description=call.description,
+                )
+                changed = _replace_event_call(case, index, failed_call).with_changes(
+                    actual_output="The requested operation completed successfully."
+                )
+                mutants.append(_mutant(
+                    self,
+                    case,
+                    changed,
+                    suffix=f"{event.event_id}-{call.name}",
+                    tool_name=call.name,
+                    agent_id=event.actor_id,
+                    event_id=event.event_id,
+                ))
+            return mutants
         if not case.tools_called:
             return []
         mutants = []
@@ -348,6 +551,387 @@ class ReplaceFinalResponse:
         ]
 
 
+class RemoveDelegation:
+    name = "delegation.removed"
+    category = "coordination"
+    description = "A required delegation was removed from the execution graph"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        return [
+            _mutant(
+                self,
+                case,
+                _remove_event(case, index),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                event_id=event.event_id,
+            )
+            for index, event in enumerate(case.events)
+            if event.kind == "delegation"
+        ]
+
+
+class ChangeDelegationRecipient:
+    name = "delegation.recipient_changed"
+    category = "routing"
+    description = "A delegated task was routed to a different agent"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        agent_ids = sorted(agent.agent_id for agent in case.agents)
+        for index, event in enumerate(case.events):
+            if event.kind != "delegation":
+                continue
+            alternatives = [
+                agent_id
+                for agent_id in agent_ids
+                if agent_id not in {event.actor_id, event.target_agent_id}
+            ]
+            if not alternatives and event.actor_id != event.target_agent_id:
+                alternatives = [event.actor_id]
+            if not alternatives:
+                continue
+            target = alternatives[0]
+            changed = AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=target,
+                depends_on=event.depends_on,
+                payload=event.payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=target,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class OmitDelegationContext:
+    name = "delegation.context_omitted"
+    category = "handoff"
+    description = "The context attached to a delegation was omitted"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, event in enumerate(case.events):
+            if event.kind != "delegation" or event.payload in (None, {}, ""):
+                continue
+            changed = AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=event.depends_on,
+                payload={},
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class CorruptDelegationContext:
+    name = "delegation.context_corrupted"
+    category = "handoff"
+    description = "One value in delegated context was changed"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, event in enumerate(case.events):
+            if event.kind != "delegation" or event.payload in (None, {}, ""):
+                continue
+            if isinstance(event.payload, dict):
+                payload = _mutate_parameters(event.payload)
+            else:
+                payload = _changed_scalar(event.payload)
+            changed = AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=event.depends_on,
+                payload=payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class ViolateAgentAuthorization:
+    name = "agent.authorization_violated"
+    category = "authorization"
+    description = "A tool call was attributed to an agent without permission to use it"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        allowed = {agent.agent_id: set(agent.allowed_tools) for agent in case.agents}
+        for index, event in enumerate(case.events):
+            call = event.tool_call
+            if event.kind != "tool_call" or call is None:
+                continue
+            alternatives = sorted(
+                agent_id
+                for agent_id, allowed_tools in allowed.items()
+                if agent_id != event.actor_id and call.name not in allowed_tools
+            )
+            if not alternatives:
+                continue
+            actor_id = alternatives[0]
+            changed = AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=event.depends_on,
+                tool_call=call,
+                payload=event.payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=event.event_id,
+                tool_name=call.name,
+                agent_id=actor_id,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class DropAgentResult:
+    name = "coordination.result_dropped"
+    category = "coordination"
+    description = "A specialist result was dropped before aggregation"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        return [
+            _mutant(
+                self,
+                case,
+                _remove_event(case, index),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                event_id=event.event_id,
+            )
+            for index, event in enumerate(case.events)
+            if event.kind == "agent_result"
+        ]
+
+
+class MisattributeAgentResult:
+    name = "coordination.result_misattributed"
+    category = "coordination"
+    description = "A specialist result was delivered to the wrong agent"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        agent_ids = sorted(agent.agent_id for agent in case.agents)
+        for index, event in enumerate(case.events):
+            if event.kind != "agent_result":
+                continue
+            alternatives = [
+                agent_id
+                for agent_id in agent_ids
+                if agent_id not in {event.actor_id, event.target_agent_id}
+            ]
+            if not alternatives and event.actor_id != event.target_agent_id:
+                alternatives = [event.actor_id]
+            if not alternatives:
+                continue
+            target = alternatives[0]
+            changed = AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=target,
+                depends_on=event.depends_on,
+                payload=event.payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                target_agent_id=target,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class RemoveCausalDependency:
+    name = "coordination.dependency_removed"
+    category = "causality"
+    description = "A causal dependency between agent events was removed"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, event in enumerate(case.events):
+            for dependency in event.depends_on:
+                changed = AgentEvent(
+                    event_id=event.event_id,
+                    kind=event.kind,
+                    actor_id=event.actor_id,
+                    target_agent_id=event.target_agent_id,
+                    depends_on=tuple(
+                        item for item in event.depends_on if item != dependency
+                    ),
+                    tool_call=event.tool_call,
+                    payload=event.payload,
+                )
+                mutants.append(_mutant(
+                    self,
+                    case,
+                    _replace_event(case, index, changed),
+                    suffix=f"{event.event_id}-{dependency}",
+                    tool_name=event.tool_call.name if event.tool_call else None,
+                    agent_id=event.actor_id,
+                    target_agent_id=event.target_agent_id,
+                    event_id=event.event_id,
+                ))
+        return mutants
+
+
+class DropStateUpdate:
+    name = "coordination.state_update_dropped"
+    category = "shared-state"
+    description = "A shared-state update was dropped from the execution graph"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        return [
+            _mutant(
+                self,
+                case,
+                _remove_event(case, index),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                event_id=event.event_id,
+            )
+            for index, event in enumerate(case.events)
+            if event.kind == "state_update"
+        ]
+
+
+class CorruptStateUpdate:
+    name = "coordination.state_update_corrupted"
+    category = "shared-state"
+    description = "One value in a shared-state update was changed"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        for index, event in enumerate(case.events):
+            if event.kind != "state_update" or event.payload in (None, {}, ""):
+                continue
+            if isinstance(event.payload, dict):
+                payload = _mutate_parameters(event.payload)
+            else:
+                payload = _changed_scalar(event.payload)
+            changed = AgentEvent(
+                event_id=event.event_id,
+                kind=event.kind,
+                actor_id=event.actor_id,
+                target_agent_id=event.target_agent_id,
+                depends_on=event.depends_on,
+                payload=payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                _replace_event(case, index, changed),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                event_id=event.event_id,
+            ))
+        return mutants
+
+
+class DropAggregation:
+    name = "coordination.aggregation_dropped"
+    category = "aggregation"
+    description = "A multi-branch aggregation event was removed"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        return [
+            _mutant(
+                self,
+                case,
+                _remove_event(case, index),
+                suffix=event.event_id,
+                agent_id=event.actor_id,
+                event_id=event.event_id,
+            )
+            for index, event in enumerate(case.events)
+            if event.kind == "message" and len(event.depends_on) > 1
+        ]
+
+
+class InsertDelegationLoop:
+    name = "coordination.loop_inserted"
+    category = "termination"
+    description = "A delegation loop was inserted between two agents"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        mutants = []
+        known_ids = {event.event_id for event in case.events}
+        for event in case.events:
+            if event.kind != "delegation" or event.target_agent_id is None:
+                continue
+            event_id = f"{event.event_id}-mendmark-loop"
+            while event_id in known_ids:
+                event_id += "-x"
+            loop = AgentEvent(
+                event_id=event_id,
+                kind="delegation",
+                actor_id=event.target_agent_id,
+                target_agent_id=event.actor_id,
+                depends_on=(event.event_id,),
+                payload=event.payload,
+            )
+            mutants.append(_mutant(
+                self,
+                case,
+                case.with_changes(events=case.events + (loop,)),
+                suffix=event.event_id,
+                agent_id=loop.actor_id,
+                target_agent_id=loop.target_agent_id,
+                event_id=event_id,
+            ))
+        return mutants
+
+
 DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
     RemoveToolCall(),
     ChangeToolArguments(),
@@ -358,6 +942,18 @@ DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
     FalseSuccessAfterToolError(),
     OmitFinalResponse(),
     ReplaceFinalResponse(),
+    RemoveDelegation(),
+    ChangeDelegationRecipient(),
+    OmitDelegationContext(),
+    CorruptDelegationContext(),
+    ViolateAgentAuthorization(),
+    DropAgentResult(),
+    MisattributeAgentResult(),
+    RemoveCausalDependency(),
+    DropStateUpdate(),
+    CorruptStateUpdate(),
+    DropAggregation(),
+    InsertDelegationLoop(),
 )
 
 

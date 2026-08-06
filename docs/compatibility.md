@@ -9,6 +9,9 @@ Mendmark 0.x is evolving, but automation still needs predictable contracts.
   mutation IDs except where a security defect makes that unsafe.
 - Minor releases may add optional object fields. Consumers must ignore unknown
   fields and select behavior using `schema_version`, not the package version.
+- JSON suite and evaluator protocol `1.0` remain the stable flat-trace contract.
+  Native event graphs use `2.0`; Mendmark chooses the evaluator protocol from
+  the case type and never sends `2.0` fields to a `1.0` single-agent audit.
 - Removing or changing a field, status, mutation ID, or plugin requirement needs
   a new schema or protocol version and migration notes.
 - Built-in mutation IDs remain `<case_id>:<operator_name>:<stable_suffix>`.

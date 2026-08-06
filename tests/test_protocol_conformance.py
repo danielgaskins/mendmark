@@ -4,11 +4,13 @@ import json
 from importlib import resources
 from types import SimpleNamespace
 
+import pytest
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
 from mendmark.agent_cases import AgentCase
 from mendmark.json_adapter import JsonCommandEvaluator
+from mendmark.json_adapter import JsonAdapterError
 
 
 def schema(name: str) -> dict:
@@ -57,3 +59,51 @@ def test_batch_protocol_conforms_and_invokes_evaluator_once(monkeypatch) -> None
         "evaluation-1",
     ]
     assert [result[0].name for result in results] == ["always", "always"]
+
+
+def test_evaluator_batches_large_suites_without_reordering(monkeypatch) -> None:
+    calls = []
+
+    def run(command, **kwargs):
+        request = json.loads(kwargs["input"])
+        calls.append(request)
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "schema_version": request["schema_version"],
+                    "evaluations": [
+                        {
+                            "evaluation_id": item["evaluation_id"],
+                            "results": [
+                                {"name": "always", "passed": True, "score": 1}
+                            ],
+                        }
+                        for item in request["evaluations"]
+                    ],
+                }
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr("mendmark.json_adapter.subprocess.run", run)
+    evaluator = JsonCommandEvaluator(("evaluator",), batch_size=2)
+    cases = tuple(
+        AgentCase(f"case-{index}", "input", "output") for index in range(5)
+    )
+
+    results = evaluator.evaluate_many(cases)
+
+    assert len(results) == 5
+    assert [len(call["evaluations"]) for call in calls] == [2, 2, 1]
+
+
+def test_evaluator_rejects_oversized_request_before_spawn(monkeypatch) -> None:
+    def unexpected_run(*args, **kwargs):
+        raise AssertionError("evaluator must not be spawned")
+
+    monkeypatch.setattr("mendmark.json_adapter.subprocess.run", unexpected_run)
+    evaluator = JsonCommandEvaluator(("evaluator",), maximum_request_bytes=10)
+
+    with pytest.raises(JsonAdapterError, match="request exceeds"):
+        evaluator.evaluate(AgentCase("case", "input", "output"))

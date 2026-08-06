@@ -20,8 +20,11 @@ def schema(name: str) -> dict:
 def test_public_schemas_are_valid_draft_2020_12() -> None:
     for name in (
         "suite-v1.schema.json",
+        "suite-v2.schema.json",
         "evaluator-request-v1.schema.json",
+        "evaluator-request-v2.schema.json",
         "evaluator-response-v1.schema.json",
+        "evaluator-response-v2.schema.json",
         "report-v1.schema.json",
         "baseline-v1.schema.json",
     ):

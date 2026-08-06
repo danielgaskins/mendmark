@@ -28,6 +28,21 @@ Reproduce and verify it with:
 python benchmarks/benchmark_golden_set.py --repeats 10
 ```
 
+## Multi-Agent Golden Set
+
+The [Mendmark Multi-Agent Golden Set](../golden/multi-agent-v1/) pins a complete
+parallel supervisor workflow with 3 agents, 3 tools, 9 causal events, and 44
+applicable mutations across 20 operators. The reference graph-and-outcome
+evaluator kills all 44 mutations.
+
+```bash
+python benchmarks/benchmark_multi_agent_golden_set.py
+```
+
+The corpus, evaluator, suite digest, mutation-ID digest, per-operator counts,
+summary, and gate result are checked in and reproducible without a model or
+network connection.
+
 ## Engine scaling benchmark
 
 This benchmark measures Mendmark's in-process mutation and report overhead. It

@@ -2,8 +2,8 @@
 
 ## One-line promise
 
-Mendmark tells an agent team whether its evals would catch a broken tool call
-before that failure reaches users.
+Mendmark tells an agent team whether its evals would catch a broken tool call or
+coordination failure before that failure reaches users.
 
 ## Buyer and pain
 
@@ -94,9 +94,11 @@ do not require raw trace ingestion.
 ### Current open-source release
 
 - Framework-neutral case and tool model.
+- Native single-agent traces and multi-agent causal event graphs.
 - DeepEval suite adapter.
 - Framework-neutral JSON suite and local batch evaluator protocol.
-- Nine built-in mutation operators.
+- Twenty-one built-in tool, response, delegation, authorization, shared-state,
+  aggregation, causality, and termination mutation operators.
 - Validated domain-specific mutation plugins.
 - Per-tool coverage and tool schema tracking.
 - Baseline regression gates.
@@ -107,6 +109,8 @@ do not require raw trace ingestion.
 - Existing deterministic ML integrity pack.
 - Versioned Agent Eval Golden Set with 24 cases, 263 mutations, three evaluator
   profiles, and pinned per-operator outcomes.
+- Versioned Multi-Agent Golden Set with 3 agents, 9 events, 44 mutations, and
+  pinned graph-and-outcome behavior.
 
 ### Next
 

@@ -1,0 +1,157 @@
+{
+  "schema_version": "2.0",
+  "policy": {
+    "minimum_kill_rate": 1.0,
+    "fail_on_critical_survivor": true,
+    "fail_on_untested_tools": true,
+    "fail_on_tool_contract_issues": true,
+    "fail_on_regression": true
+  },
+  "tools": [
+    {
+      "name": "lookup_charge",
+      "input_schema": {
+        "type": "object",
+        "properties": {"charge_id": {"type": "string"}},
+        "required": ["charge_id"]
+      }
+    },
+    {
+      "name": "refund_charge",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "charge_id": {"type": "string"},
+          "amount": {"type": "number"}
+        },
+        "required": ["charge_id", "amount"]
+      },
+      "side_effecting": true
+    },
+    {
+      "name": "assess_account_risk",
+      "input_schema": {
+        "type": "object",
+        "properties": {"account_id": {"type": "string"}},
+        "required": ["account_id"]
+      }
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "parallel-refund-review",
+      "input": "Resolve the duplicate charge and check the account risk.",
+      "actual_output": "The duplicate charge was refunded and the account remains low risk.",
+      "expected_output": "The duplicate charge was refunded and the account remains low risk.",
+      "root_agent_id": "supervisor",
+      "agents": [
+        {
+          "agent_id": "supervisor",
+          "role": "orchestrator",
+          "allowed_tools": []
+        },
+        {
+          "agent_id": "billing",
+          "role": "billing specialist",
+          "allowed_tools": ["lookup_charge", "refund_charge"]
+        },
+        {
+          "agent_id": "risk",
+          "role": "risk specialist",
+          "allowed_tools": ["assess_account_risk"]
+        }
+      ],
+      "events": [
+        {
+          "event_id": "delegate-billing",
+          "kind": "delegation",
+          "actor_id": "supervisor",
+          "target_agent_id": "billing",
+          "payload": {"task": "Verify and refund only the duplicate charge."}
+        },
+        {
+          "event_id": "delegate-risk",
+          "kind": "delegation",
+          "actor_id": "supervisor",
+          "target_agent_id": "risk",
+          "payload": {"task": "Assess the account before the final response."}
+        },
+        {
+          "event_id": "lookup-charge",
+          "kind": "tool_call",
+          "actor_id": "billing",
+          "depends_on": ["delegate-billing"],
+          "tool_call": {
+            "name": "lookup_charge",
+            "input_parameters": {"charge_id": "ch_104"},
+            "output": {"amount": 29.99, "duplicate": true}
+          }
+        },
+        {
+          "event_id": "refund-charge",
+          "kind": "tool_call",
+          "actor_id": "billing",
+          "depends_on": ["lookup-charge"],
+          "tool_call": {
+            "name": "refund_charge",
+            "input_parameters": {"charge_id": "ch_104", "amount": 29.99},
+            "output": {"refund_id": "rf_104", "status": "accepted"}
+          }
+        },
+        {
+          "event_id": "record-refund-state",
+          "kind": "state_update",
+          "actor_id": "billing",
+          "depends_on": ["refund-charge"],
+          "payload": {"refund_status": "accepted", "revision": 2}
+        },
+        {
+          "event_id": "billing-result",
+          "kind": "agent_result",
+          "actor_id": "billing",
+          "target_agent_id": "supervisor",
+          "depends_on": ["record-refund-state"],
+          "payload": {"status": "refunded"}
+        },
+        {
+          "event_id": "assess-risk",
+          "kind": "tool_call",
+          "actor_id": "risk",
+          "depends_on": ["delegate-risk"],
+          "tool_call": {
+            "name": "assess_account_risk",
+            "input_parameters": {"account_id": "acct_104"},
+            "output": {"risk": "low"}
+          }
+        },
+        {
+          "event_id": "risk-result",
+          "kind": "agent_result",
+          "actor_id": "risk",
+          "target_agent_id": "supervisor",
+          "depends_on": ["assess-risk"],
+          "payload": {"risk": "low"}
+        },
+        {
+          "event_id": "aggregate-results",
+          "kind": "message",
+          "actor_id": "supervisor",
+          "depends_on": ["billing-result", "risk-result"],
+          "payload": {"status": "ready_to_respond"}
+        }
+      ],
+      "expected_events": [
+        {"event_id": "delegate-billing", "kind": "delegation", "actor_id": "supervisor", "target_agent_id": "billing", "payload": {"task": "Verify and refund only the duplicate charge."}},
+        {"event_id": "delegate-risk", "kind": "delegation", "actor_id": "supervisor", "target_agent_id": "risk", "payload": {"task": "Assess the account before the final response."}},
+        {"event_id": "lookup-charge", "kind": "tool_call", "actor_id": "billing", "depends_on": ["delegate-billing"], "tool_call": {"name": "lookup_charge", "input_parameters": {"charge_id": "ch_104"}, "output": {"amount": 29.99, "duplicate": true}}},
+        {"event_id": "refund-charge", "kind": "tool_call", "actor_id": "billing", "depends_on": ["lookup-charge"], "tool_call": {"name": "refund_charge", "input_parameters": {"charge_id": "ch_104", "amount": 29.99}, "output": {"refund_id": "rf_104", "status": "accepted"}}},
+        {"event_id": "record-refund-state", "kind": "state_update", "actor_id": "billing", "depends_on": ["refund-charge"], "payload": {"refund_status": "accepted", "revision": 2}},
+        {"event_id": "billing-result", "kind": "agent_result", "actor_id": "billing", "target_agent_id": "supervisor", "depends_on": ["record-refund-state"], "payload": {"status": "refunded"}},
+        {"event_id": "assess-risk", "kind": "tool_call", "actor_id": "risk", "depends_on": ["delegate-risk"], "tool_call": {"name": "assess_account_risk", "input_parameters": {"account_id": "acct_104"}, "output": {"risk": "low"}}},
+        {"event_id": "risk-result", "kind": "agent_result", "actor_id": "risk", "target_agent_id": "supervisor", "depends_on": ["assess-risk"], "payload": {"risk": "low"}},
+        {"event_id": "aggregate-results", "kind": "message", "actor_id": "supervisor", "depends_on": ["billing-result", "risk-result"], "payload": {"status": "ready_to_respond"}}
+      ],
+      "tags": ["multi-agent", "parallel", "side-effect"]
+    }
+  ]
+}

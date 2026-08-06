@@ -10,7 +10,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .agent_cases import AgentCase, ToolCallRecord, ToolSpec
+from .agent_cases import (
+    AgentCase,
+    AgentEvent,
+    AgentSpec,
+    ToolCallRecord,
+    ToolSpec,
+    case_graph_issues,
+)
 from .audit import AuditPolicy, MetricResult
 
 
@@ -77,12 +84,78 @@ def _calls(value: Any, location: str) -> tuple[ToolCallRecord, ...]:
     )
 
 
-def _case(value: Any, index: int) -> AgentCase:
-    location = f"cases[{index}]"
+def _agent(value: Any, location: str) -> AgentSpec:
+    data = _object(value, location)
+    _reject_unknown(data, {"agent_id", "role", "description", "allowed_tools"}, location)
+    raw_tools = _array(data.get("allowed_tools", []), f"{location}.allowed_tools")
+    if not all(isinstance(tool, str) and tool for tool in raw_tools):
+        raise JsonAdapterError(f"{location}.allowed_tools must contain non-empty strings")
+    if len(raw_tools) != len(set(raw_tools)):
+        raise JsonAdapterError(f"{location}.allowed_tools must not contain duplicates")
+    return AgentSpec(
+        agent_id=str(_string(data.get("agent_id"), f"{location}.agent_id")),
+        role=_optional_string(data.get("role"), f"{location}.role"),
+        description=_optional_string(data.get("description"), f"{location}.description"),
+        allowed_tools=tuple(raw_tools),
+    )
+
+
+def _agents(value: Any, location: str) -> tuple[AgentSpec, ...]:
+    return tuple(
+        _agent(item, f"{location}[{index}]")
+        for index, item in enumerate(_array(value, location))
+    )
+
+
+def _event(value: Any, location: str) -> AgentEvent:
     data = _object(value, location)
     _reject_unknown(
         data,
         {
+            "event_id",
+            "kind",
+            "actor_id",
+            "target_agent_id",
+            "depends_on",
+            "tool_call",
+            "payload",
+        },
+        location,
+    )
+    raw_dependencies = _array(data.get("depends_on", []), f"{location}.depends_on")
+    if not all(isinstance(item, str) and item for item in raw_dependencies):
+        raise JsonAdapterError(f"{location}.depends_on must contain non-empty strings")
+    if len(raw_dependencies) != len(set(raw_dependencies)):
+        raise JsonAdapterError(f"{location}.depends_on must not contain duplicates")
+    raw_call = data.get("tool_call")
+    return AgentEvent(
+        event_id=str(_string(data.get("event_id"), f"{location}.event_id")),
+        kind=str(_string(data.get("kind"), f"{location}.kind")),
+        actor_id=str(_string(data.get("actor_id"), f"{location}.actor_id")),
+        target_agent_id=_optional_string(
+            data.get("target_agent_id"), f"{location}.target_agent_id"
+        ),
+        depends_on=tuple(raw_dependencies),
+        tool_call=(
+            _tool_call(raw_call, f"{location}.tool_call")
+            if raw_call is not None
+            else None
+        ),
+        payload=data.get("payload"),
+    )
+
+
+def _events(value: Any, location: str) -> tuple[AgentEvent, ...]:
+    return tuple(
+        _event(item, f"{location}[{index}]")
+        for index, item in enumerate(_array(value, location))
+    )
+
+
+def _case(value: Any, index: int, *, schema_version: str) -> AgentCase:
+    location = f"cases[{index}]"
+    data = _object(value, location)
+    allowed = {
             "case_id",
             "input",
             "actual_output",
@@ -91,9 +164,10 @@ def _case(value: Any, index: int) -> AgentCase:
             "expected_tools",
             "metadata",
             "tags",
-        },
-        location,
-    )
+    }
+    if schema_version == "2.0":
+        allowed.update({"agents", "events", "expected_events", "root_agent_id"})
+    _reject_unknown(data, allowed, location)
     metadata = data.get("metadata", {})
     if not isinstance(metadata, dict):
         raise JsonAdapterError(f"{location}.metadata must be an object")
@@ -122,6 +196,14 @@ def _case(value: Any, index: int) -> AgentCase:
         ),
         metadata=metadata,
         tags=tuple(raw_tags),
+        agents=_agents(data.get("agents", []), f"{location}.agents"),
+        events=_events(data.get("events", []), f"{location}.events"),
+        expected_events=_events(
+            data.get("expected_events", []), f"{location}.expected_events"
+        ),
+        root_agent_id=_optional_string(
+            data.get("root_agent_id"), f"{location}.root_agent_id"
+        ),
     )
 
 
@@ -152,6 +234,7 @@ class LoadedJsonSuite:
     cases: tuple[AgentCase, ...]
     tools: tuple[ToolSpec, ...]
     policy: AuditPolicy
+    schema_version: str
 
 
 def load_json_suite(path: str | Path) -> LoadedJsonSuite:
@@ -167,10 +250,11 @@ def load_json_suite(path: str | Path) -> LoadedJsonSuite:
         ) from error
     root = _object(data, "JSON suite")
     _reject_unknown(root, {"schema_version", "policy", "tools", "cases"}, "JSON suite")
-    if root.get("schema_version") != "1.0":
-        raise JsonAdapterError("schema_version must be '1.0'")
+    schema_version = root.get("schema_version")
+    if schema_version not in {"1.0", "2.0"}:
+        raise JsonAdapterError("schema_version must be '1.0' or '2.0'")
     cases = tuple(
-        _case(item, index)
+        _case(item, index, schema_version=schema_version)
         for index, item in enumerate(_array(root.get("cases"), "cases"))
     )
     if not cases:
@@ -178,6 +262,15 @@ def load_json_suite(path: str | Path) -> LoadedJsonSuite:
     case_ids = [case.case_id for case in cases]
     if len(case_ids) != len(set(case_ids)):
         raise JsonAdapterError("case_id values must be unique")
+    for case in cases:
+        issues = case_graph_issues(case)
+        if issues:
+            issue = issues[0]
+            event = f" at event {issue['event_id']!r}" if "event_id" in issue else ""
+            raise JsonAdapterError(
+                f"invalid multi-agent graph in case {case.case_id!r}{event}: "
+                f"{issue['issue']}"
+            )
     tools = tuple(
         _tool(item, index)
         for index, item in enumerate(_array(root.get("tools", []), "tools"))
@@ -192,7 +285,9 @@ def load_json_suite(path: str | Path) -> LoadedJsonSuite:
         policy = AuditPolicy(**raw_policy)
     except (TypeError, ValueError) as error:
         raise JsonAdapterError(f"invalid policy: {error}") from error
-    return LoadedJsonSuite(cases=cases, tools=tools, policy=policy)
+    return LoadedJsonSuite(
+        cases=cases, tools=tools, policy=policy, schema_version=schema_version
+    )
 
 
 def case_to_json(case: AgentCase) -> dict[str, Any]:
@@ -205,7 +300,7 @@ def case_to_json(case: AgentCase) -> dict[str, Any]:
             "description": value.description,
         }
 
-    return {
+    serialized = {
         "case_id": case.case_id,
         "input": case.input,
         "actual_output": case.actual_output,
@@ -215,6 +310,45 @@ def case_to_json(case: AgentCase) -> dict[str, Any]:
         "metadata": case.metadata,
         "tags": list(case.tags),
     }
+    if case.is_multi_agent:
+        serialized.update(
+            {
+                "root_agent_id": case.root_agent_id,
+                "agents": [
+                    {
+                        "agent_id": agent.agent_id,
+                        "role": agent.role,
+                        "description": agent.description,
+                        "allowed_tools": list(agent.allowed_tools),
+                    }
+                    for agent in case.agents
+                ],
+                "events": [_event_to_json(event) for event in case.events],
+                "expected_events": [
+                    _event_to_json(event) for event in case.expected_events
+                ],
+            }
+        )
+    return serialized
+
+
+def _event_to_json(event: AgentEvent) -> dict[str, Any]:
+    value: dict[str, Any] = {
+        "event_id": event.event_id,
+        "kind": event.kind,
+        "actor_id": event.actor_id,
+        "target_agent_id": event.target_agent_id,
+        "depends_on": list(event.depends_on),
+        "payload": event.payload,
+    }
+    if event.tool_call is not None:
+        value["tool_call"] = {
+            "name": event.tool_call.name,
+            "input_parameters": event.tool_call.input_parameters,
+            "output": event.tool_call.output,
+            "description": event.tool_call.description,
+        }
+    return value
 
 
 class JsonCommandEvaluator:
@@ -225,6 +359,9 @@ class JsonCommandEvaluator:
         command: str | tuple[str, ...],
         *,
         timeout_seconds: float = 60,
+        batch_size: int | None = None,
+        protocol_version: str | None = None,
+        maximum_request_bytes: int = 64_000_000,
         maximum_output_bytes: int = 16_000_000,
     ) -> None:
         parts = tuple(shlex.split(command)) if isinstance(command, str) else command
@@ -234,8 +371,19 @@ class JsonCommandEvaluator:
             raise JsonAdapterError(
                 "evaluator timeout must be greater than 0 and at most 3600"
             )
+        if batch_size is not None and (
+            isinstance(batch_size, bool) or not isinstance(batch_size, int) or batch_size < 1
+        ):
+            raise JsonAdapterError("evaluator batch size must be a positive integer")
+        if maximum_request_bytes < 1:
+            raise JsonAdapterError("maximum request bytes must be positive")
+        if protocol_version not in {None, "1.0", "2.0"}:
+            raise JsonAdapterError("evaluator protocol version must be '1.0' or '2.0'")
         self.command = parts
         self.timeout_seconds = timeout_seconds
+        self.batch_size = batch_size
+        self.protocol_version = protocol_version
+        self.maximum_request_bytes = maximum_request_bytes
         self.maximum_output_bytes = maximum_output_bytes
 
     def evaluate(self, case: AgentCase) -> tuple[MetricResult, ...]:
@@ -245,9 +393,22 @@ class JsonCommandEvaluator:
         self, cases: tuple[AgentCase, ...]
     ) -> tuple[tuple[MetricResult, ...], ...]:
         """Evaluate the complete audit batch with one process invocation."""
+        if self.batch_size is not None and len(cases) > self.batch_size:
+            results: list[tuple[MetricResult, ...]] = []
+            for start in range(0, len(cases), self.batch_size):
+                results.extend(self._evaluate_batch(cases[start : start + self.batch_size]))
+            return tuple(results)
+        return self._evaluate_batch(cases)
+
+    def _evaluate_batch(
+        self, cases: tuple[AgentCase, ...]
+    ) -> tuple[tuple[MetricResult, ...], ...]:
+        schema_version = self.protocol_version or (
+            "2.0" if any(case.is_multi_agent for case in cases) else "1.0"
+        )
         request = json.dumps(
             {
-                "schema_version": "1.0",
+                "schema_version": schema_version,
                 "evaluations": [
                     {
                         "evaluation_id": f"evaluation-{index}",
@@ -258,6 +419,12 @@ class JsonCommandEvaluator:
             },
             separators=(",", ":"),
         )
+        if len(request.encode("utf-8")) > self.maximum_request_bytes:
+            raise JsonAdapterError(
+                "evaluator request exceeds the configured byte limit; "
+                "reduce --evaluator-batch-size or increase "
+                "--evaluator-maximum-request-bytes"
+            )
         try:
             completed = subprocess.run(
                 self.command,
@@ -286,8 +453,10 @@ class JsonCommandEvaluator:
             raise JsonAdapterError("evaluator command returned invalid JSON") from error
         data = _object(response, "evaluator response")
         _reject_unknown(data, {"schema_version", "evaluations"}, "evaluator response")
-        if data.get("schema_version") != "1.0":
-            raise JsonAdapterError("evaluator response schema_version must be '1.0'")
+        if data.get("schema_version") != schema_version:
+            raise JsonAdapterError(
+                f"evaluator response schema_version must be {schema_version!r}"
+            )
         evaluations = _array(
             data.get("evaluations"), "evaluator response.evaluations"
         )

@@ -1,0 +1,48 @@
+{
+  "name": "Mendmark Multi-Agent Golden Set",
+  "version": "multi-agent-v1",
+  "suite": "../../examples/multi_agent_suite.json",
+  "evaluator": "../../examples/multi_agent_evaluator.py",
+  "suite_sha256": "dab964dd9fec9746cce16c5194e4dccaef5e6742d251d4f7f2b506d8640f1aea",
+  "mutation_id_digest": "ea57f51d8247093d77e97de78ba8119a17dfc2dabfa3e527de366604dc270da4",
+  "contents": {
+    "cases": 1,
+    "agents": 3,
+    "tools": 3,
+    "events": 9,
+    "tool_calls": 3,
+    "mutations": 44
+  },
+  "operator_counts": {
+    "agent.authorization_violated": 3,
+    "coordination.aggregation_dropped": 1,
+    "coordination.dependency_removed": 8,
+    "coordination.loop_inserted": 2,
+    "coordination.result_dropped": 2,
+    "coordination.result_misattributed": 2,
+    "coordination.state_update_corrupted": 1,
+    "coordination.state_update_dropped": 1,
+    "delegation.context_corrupted": 2,
+    "delegation.context_omitted": 2,
+    "delegation.recipient_changed": 2,
+    "delegation.removed": 2,
+    "recovery.false_success": 3,
+    "response.omitted": 1,
+    "response.replaced": 1,
+    "tool.arguments_changed": 3,
+    "tool.output_corrupted": 3,
+    "tool.removed": 3,
+    "tool.side_effect_duplicated": 1,
+    "tool.unknown_added": 1
+  },
+  "expected_summary": {
+    "cases": 1,
+    "mutants": 44,
+    "killed": 44,
+    "survived": 0,
+    "errors": 0,
+    "kill_rate": 1.0,
+    "critical_survivors": 0
+  },
+  "expected_gate_passed": true
+}

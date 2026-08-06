@@ -1,7 +1,7 @@
 <div align="center">
   <h1>Mendmark</h1>
   <p><strong>Mutation testing for agent evals.</strong></p>
-  <p>Find the broken tool calls your passing tests still accept.</p>
+  <p>Find the broken tool calls and coordination failures your passing tests still accept.</p>
   <p>
     <a href="https://github.com/danielgaskins/mendmark/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/danielgaskins/mendmark/actions/workflows/tests.yml/badge.svg"></a>
     <a href="https://github.com/danielgaskins/mendmark/actions/workflows/security.yml"><img alt="Security" src="https://github.com/danielgaskins/mendmark/actions/workflows/security.yml/badge.svg"></a>
@@ -12,6 +12,7 @@
   <p>
     <a href="#quick-start">Quick start</a> ·
     <a href="#agent-eval-golden-set">Golden set</a> ·
+    <a href="docs/multi-agent.md">Multi-agent</a> ·
     <a href="docs/agent-mutation-audits.md">How it works</a> ·
     <a href="docs/pilot-guide.md">Run a pilot</a>
   </p>
@@ -54,6 +55,13 @@ Gate: PASS
 
 Run the same command in CI without `--write-baseline`. Mendmark compares the
 current tool schemas and mutation results with the last accepted baseline.
+
+For a native parallel multi-agent audit:
+
+```bash
+mendmark audit-json examples/multi_agent_suite.json \
+  --evaluator-command "python3 examples/multi_agent_evaluator.py"
+```
 
 ## See the blind spot in two minutes
 
@@ -98,6 +106,14 @@ Review the [manifest](golden/agent-eval-v1/manifest.json),
 [reference performance](golden/agent-eval-v1/results.json) directly. The
 benchmark is deterministic, offline, and makes no model calls.
 
+Native coordination behavior has its own reviewable
+[Multi-Agent Golden Set](golden/multi-agent-v1/): **3 agents, 9 causal events,
+44 pinned mutations, and 44/44 killed** by the complete reference evaluator.
+
+```bash
+python benchmarks/benchmark_multi_agent_golden_set.py
+```
+
 ## Built for real CI
 
 <table>
@@ -110,6 +126,25 @@ benchmark is deterministic, offline, and makes no model calls.
     <td width="50%"><strong>🔐 Keep case content local</strong><br>Reports omit prompts, answers, tool arguments, and tool outputs; artifacts can be signed with Cosign.</td>
   </tr>
 </table>
+
+## One engine for single-agent and multi-agent systems
+
+Single-agent suites use a simple ordered tool trace. Multi-agent suites add a
+causal event graph with agent identities, delegation targets, explicit tool
+permissions, returned results, shared-state events, and dependencies. Existing
+`1.0` suites remain unchanged; native graphs use the validated `2.0` JSON
+contract.
+
+Mendmark mutates both layers. It can break an individual tool call, route work
+to the wrong specialist, omit handoff context, drop or misattribute a result,
+violate an agent's tool permissions, remove a causal dependency, or insert a
+delegation loop. Independent parallel branches are not forced into an arbitrary
+wall-clock order.
+
+The included three-agent reference suite has 9 events across parallel billing
+and risk branches. Its complete evaluator kills all 44 applicable mutations.
+See the [multi-agent guide](docs/multi-agent.md) and reviewable
+[JSON suite](examples/multi_agent_suite.json).
 
 ## See an eval fail the test
 

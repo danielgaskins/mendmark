@@ -19,6 +19,8 @@ jobs:
       - run: python -m pip install -e .
       - name: Verify the Agent Eval Golden Set
         run: python benchmarks/benchmark_golden_set.py
+      - name: Verify the Multi-Agent Golden Set
+        run: python benchmarks/benchmark_multi_agent_golden_set.py
 
   test:
     runs-on: ubuntu-latest
@@ -47,6 +49,11 @@ jobs:
           --evaluator-command "python examples/json_evaluator.py"
           --baseline examples/order_agent_baseline.json
           --output /tmp/mendmark-json-report.json
+      - name: Mutation-test the native multi-agent example
+        run: >-
+          mendmark audit-json examples/multi_agent_suite.json
+          --evaluator-command "python examples/multi_agent_evaluator.py"
+          --output /tmp/mendmark-multi-agent-report.json
       - name: Build the wheel
         run: python -m pip wheel . --no-deps --wheel-dir /tmp/mendmark-dist
 

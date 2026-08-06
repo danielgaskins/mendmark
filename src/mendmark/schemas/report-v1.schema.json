@@ -82,6 +82,7 @@
       }
     },
     "tools": {"$ref": "#/$defs/tools"},
+    "agents": {"$ref": "#/$defs/agents"},
     "mutations": {
       "type": "array",
       "items": {"$ref": "#/$defs/mutation"}
@@ -148,6 +149,37 @@
         "mutation_coverage": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}}
       }
     },
+    "agent_contract_issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "issue"],
+      "properties": {
+        "case_id": {"type": "string"},
+        "trace": {"enum": ["actual", "expected"]},
+        "event_id": {"type": "string"},
+        "agent_id": {"type": "string"},
+        "tool_name": {"type": "string"},
+        "issue": {"type": "string"}
+      }
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["declared", "tested", "untested", "cases", "events", "added_since_baseline", "removed_since_baseline", "changed_since_baseline", "schema_digests", "contract_issues", "mutation_coverage"],
+      "properties": {
+        "declared": {"$ref": "#/$defs/strings"},
+        "tested": {"$ref": "#/$defs/strings"},
+        "untested": {"$ref": "#/$defs/strings"},
+        "cases": {"type": "integer", "minimum": 1},
+        "events": {"type": "integer", "minimum": 0},
+        "added_since_baseline": {"$ref": "#/$defs/strings"},
+        "removed_since_baseline": {"$ref": "#/$defs/strings"},
+        "changed_since_baseline": {"$ref": "#/$defs/strings"},
+        "schema_digests": {"type": "object", "additionalProperties": {"$ref": "#/$defs/digest"}},
+        "contract_issues": {"type": "array", "items": {"$ref": "#/$defs/agent_contract_issue"}},
+        "mutation_coverage": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}}
+      }
+    },
     "mutation": {
       "type": "object",
       "additionalProperties": false,
@@ -160,6 +192,9 @@
         "description": {"type": "string"},
         "severity": {"enum": ["low", "medium", "high", "critical"]},
         "tool_name": {"type": ["string", "null"]},
+        "agent_id": {"type": "string"},
+        "target_agent_id": {"type": "string"},
+        "event_id": {"type": "string"},
         "status": {"enum": ["killed", "survived", "error"]},
         "killed_by": {"$ref": "#/$defs/strings"},
         "evaluation_errors": {"$ref": "#/$defs/strings"}

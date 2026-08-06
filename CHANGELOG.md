@@ -7,6 +7,17 @@ Semantic Versioning for its Python and JSON contracts.
 
 ### Added
 
+- Native multi-agent event graphs with explicit agent contracts, delegation,
+  causal dependencies, agent-owned tool calls, results, messages, and shared
+  state updates through JSON suite and evaluator protocol `2.0`.
+- Twelve coordination mutation operators covering routing, handoff context,
+  authorization, dropped and misattributed results, missing dependencies, and
+  delegation loops. Existing tool and response operators also mutate event
+  graphs.
+- Privacy-safe per-agent coverage, agent contract digests in accepted baselines,
+  deterministic large-graph assurance, a complete parallel example, and the
+  Mendmark Multi-Agent Golden Set.
+
 - A deliberately weak refund-agent suite that demonstrates how an evaluator can
   accept the correct final response while missing broken tool behavior.
 - A regression test proving that the weak example exposes surviving critical

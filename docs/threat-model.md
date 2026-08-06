@@ -1,13 +1,14 @@
 # Threat model and data flow
 
-This document describes Mendmark 0.4 as a local CLI and Python package. It does
+This document describes Mendmark 0.5 as a local CLI and Python package. It does
 not describe a hosted control plane, because none exists in the current product.
 
 ## Security objectives
 
 Mendmark aims to:
 
-- Keep prompts, answers, tool arguments, and tool outputs out of its reports.
+- Keep prompts, answers, messages, event payloads, tool arguments, and tool
+  outputs out of its reports.
 - Make evaluator failures visible rather than counting them as successful kills.
 - Prevent a failed audit from replacing an accepted baseline.
 - Make released packages traceable to a verified repository release workflow.
@@ -34,9 +35,10 @@ suite / JSON cases ----> Mendmark mutation engine ----> trusted evaluator
 ```
 
 Mendmark processes case content locally. Its report serializers retain IDs,
-operator and metric names, tool names and schema digests, statuses, aggregate
-counts, policy results, and source/CI provenance. They omit prompts, expected and
-actual answers, tool arguments, and tool outputs.
+operator and metric names, agent and tool names, contract digests, statuses,
+aggregate counts, policy results, and source/CI provenance. They omit prompts,
+expected and actual answers, messages, event payloads, tool arguments, and tool
+outputs.
 
 Identifiers, tool names, metric names, mutation descriptions, source metadata,
 and custom operator metadata are not secret fields. Customers must avoid placing
@@ -62,8 +64,8 @@ encryption or anonymization.
 | Case content leaks through Mendmark output | Report, JUnit, SARIF, error, and console privacy-canary tests; schemas exclude case-content fields. | Trusted integrations may log or transmit content themselves. Sanitize identifiers and inspect logs before exporting them. |
 | A report or baseline is altered | Strict schema validation; optional Cosign signing and exact-identity verification; failed gates cannot overwrite accepted baselines. | Unsigned artifacts have no cryptographic origin guarantee. Require signature verification in the consuming workflow. |
 | Dependency or release compromise | Zero mandatory runtime dependencies; signed commits and tags; immutable releases; Trusted Publishing provenance; pinned Actions; dependency review, vulnerability audit, and SBOM automation. | Optional adapters have transitive dependencies and upstream risk. Apply organizational allowlists and scan the exact deployed environment. |
-| Excessive evaluator cost or runtime | `--maximum-mutants`, evaluator timeout controls, and changed-tool-only audits. | A permitted evaluator can still consume resources or call paid services. Enforce process, network, and provider-side budgets outside Mendmark. |
-| Crafted input exhausts memory or produces an oversized report | Strict JSON validation and an explicit pre-evaluation mutation ceiling. | No hard input-byte or report-size limit is currently claimed. Bound source artifact size and job resources at the CI/container layer. |
+| Excessive evaluator cost or runtime | `--maximum-mutants`, evaluator timeout and batch controls, bounded request size, and changed-tool-only audits. | A permitted evaluator can still consume resources or call paid services. Enforce process, network, and provider-side budgets outside Mendmark. |
+| Crafted input exhausts memory or produces an oversized report | Strict JSON validation, a 64 MB evaluator-request limit, a 16 MB evaluator-response limit, optional batching, and an explicit pre-evaluation mutation ceiling. | Source suites and generated reports do not have a universal byte ceiling. Bound source artifact size and job resources at the CI/container layer. |
 | Tool schema digests reveal sensitive data | Reports store digests rather than schemas or argument values. | Low-entropy or known schemas may be guessable; a digest is not a secrecy mechanism. Do not place secrets in schemas or descriptions. |
 | Results are interpreted as proof of agent safety | Documentation and CLI language distinguish mutation detection from agent correctness. | Users may still overgeneralize. Review applicable operators, survivors, evaluator errors, and untested failure classes before release decisions. |
 
@@ -74,8 +76,8 @@ encryption or anonymization.
    checkout where practical.
 3. Provide only the secrets and outbound network access required by the trusted
    evaluator. Do not expose deployment or production credentials.
-4. Set evaluator timeout, mutation budget, process memory/CPU limits, and
-   provider-side spend limits.
+4. Set evaluator timeout, batch size, request size, mutation budget, process
+   memory/CPU limits, and provider-side spend limits.
 5. Store raw suites and traces under the customer's existing data controls.
 6. Export only reviewed Mendmark reports; sanitize case IDs, tool names, metric
    names, custom metadata, and source metadata when necessary.
@@ -88,7 +90,7 @@ encryption or anonymization.
 
 The privacy boundary is exercised by `tests/test_user_assurance.py`. Distribution
 CI builds the wheel, installs it outside the repository, validates the packaged
-schemas and tasks, and runs the complete offline JSON audit. Security automation
+schemas and tasks, and runs complete offline single- and multi-agent JSON audits. Security automation
 audits the resolved optional integration environment and emits a validated,
 reproducible CycloneDX SBOM.
 

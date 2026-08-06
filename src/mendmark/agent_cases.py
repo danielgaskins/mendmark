@@ -17,6 +17,44 @@ class ToolCallRecord:
 
 
 @dataclass(frozen=True)
+class AgentSpec:
+    """A participant in a multi-agent execution.
+
+    ``allowed_tools`` is an explicit allow-list. An empty tuple means the agent
+    may not call tools, which keeps authorization checks deterministic.
+    """
+
+    agent_id: str
+    role: str | None = None
+    description: str | None = None
+    allowed_tools: tuple[str, ...] = ()
+
+    @property
+    def digest(self) -> str:
+        payload = {
+            "agent_id": self.agent_id,
+            "role": self.role,
+            "description": self.description,
+            "allowed_tools": sorted(self.allowed_tools),
+        }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+@dataclass(frozen=True)
+class AgentEvent:
+    """One causally-addressable event in a multi-agent execution graph."""
+
+    event_id: str
+    kind: str
+    actor_id: str
+    target_agent_id: str | None = None
+    depends_on: tuple[str, ...] = ()
+    tool_call: ToolCallRecord | None = None
+    payload: Any = None
+
+
+@dataclass(frozen=True)
 class AgentCase:
     case_id: str
     input: str
@@ -26,9 +64,142 @@ class AgentCase:
     expected_tools: tuple[ToolCallRecord, ...] = ()
     metadata: dict[str, Any] = field(default_factory=dict)
     tags: tuple[str, ...] = ()
+    agents: tuple[AgentSpec, ...] = ()
+    events: tuple[AgentEvent, ...] = ()
+    expected_events: tuple[AgentEvent, ...] = ()
+    root_agent_id: str | None = None
 
     def with_changes(self, **changes: Any) -> "AgentCase":
         return replace(self, **changes)
+
+    @property
+    def is_multi_agent(self) -> bool:
+        return bool(self.agents or self.events or self.expected_events)
+
+    def actual_tool_calls(self) -> tuple[ToolCallRecord, ...]:
+        event_calls = tuple(
+            event.tool_call
+            for event in self.events
+            if event.kind == "tool_call" and event.tool_call is not None
+        )
+        return event_calls if self.events else self.tools_called
+
+    def expected_tool_calls(self) -> tuple[ToolCallRecord, ...]:
+        event_calls = tuple(
+            event.tool_call
+            for event in self.expected_events
+            if event.kind == "tool_call" and event.tool_call is not None
+        )
+        return event_calls if self.expected_events else self.expected_tools
+
+
+_EVENT_KINDS = {
+    "delegation",
+    "message",
+    "tool_call",
+    "agent_result",
+    "state_update",
+}
+
+
+def case_graph_issues(case: AgentCase) -> list[dict[str, str]]:
+    """Return privacy-safe structural issues for a multi-agent case."""
+
+    if not case.is_multi_agent:
+        return []
+    issues: list[dict[str, str]] = []
+    agent_ids = [agent.agent_id for agent in case.agents]
+    declared = set(agent_ids)
+    if not agent_ids:
+        issues.append({"case_id": case.case_id, "issue": "no agents are declared"})
+    if len(agent_ids) != len(declared):
+        issues.append({"case_id": case.case_id, "issue": "agent ids are not unique"})
+    for agent in case.agents:
+        if not agent.agent_id.strip():
+            issues.append({"case_id": case.case_id, "issue": "agent id is empty"})
+        if len(agent.allowed_tools) != len(set(agent.allowed_tools)):
+            issues.append({
+                "case_id": case.case_id,
+                "issue": "agent tool allow-list contains duplicates",
+            })
+        if any(not tool_name.strip() for tool_name in agent.allowed_tools):
+            issues.append({
+                "case_id": case.case_id,
+                "issue": "agent tool allow-list contains an empty name",
+            })
+    if case.root_agent_id is None:
+        issues.append({"case_id": case.case_id, "issue": "root agent is not declared"})
+    elif case.root_agent_id not in declared:
+        issues.append({"case_id": case.case_id, "issue": "root agent is unknown"})
+
+    for trace_name, events in (
+        ("actual", case.events),
+        ("expected", case.expected_events),
+    ):
+        event_ids = [event.event_id for event in events]
+        known_events = set(event_ids)
+        if len(event_ids) != len(known_events):
+            issues.append({
+                "case_id": case.case_id,
+                "trace": trace_name,
+                "issue": "event ids are not unique",
+            })
+        dependencies: dict[str, tuple[str, ...]] = {}
+        for event in events:
+            location = {
+                "case_id": case.case_id,
+                "trace": trace_name,
+                "event_id": event.event_id,
+            }
+            if event.kind not in _EVENT_KINDS:
+                issues.append({**location, "issue": "event kind is unsupported"})
+            if not event.event_id.strip():
+                issues.append({**location, "issue": "event id is empty"})
+            if len(event.depends_on) != len(set(event.depends_on)):
+                issues.append({**location, "issue": "event dependencies contain duplicates"})
+            if event.actor_id not in declared:
+                issues.append({**location, "issue": "event actor is unknown"})
+            if event.target_agent_id is not None and event.target_agent_id not in declared:
+                issues.append({**location, "issue": "event target is unknown"})
+            if event.kind == "delegation" and event.target_agent_id is None:
+                issues.append({**location, "issue": "delegation has no target"})
+            if event.kind == "delegation" and event.target_agent_id == event.actor_id:
+                issues.append({**location, "issue": "agent delegates to itself"})
+            if event.kind == "tool_call" and event.tool_call is None:
+                issues.append({**location, "issue": "tool event has no tool call"})
+            if event.kind != "tool_call" and event.tool_call is not None:
+                issues.append({**location, "issue": "non-tool event contains a tool call"})
+            missing = sorted(set(event.depends_on) - known_events)
+            if missing:
+                issues.append({**location, "issue": "event dependency is unknown"})
+            if event.event_id in event.depends_on:
+                issues.append({**location, "issue": "event depends on itself"})
+            dependencies[event.event_id] = event.depends_on
+
+        visiting: set[str] = set()
+        visited: set[str] = set()
+
+        def visit(event_id: str) -> bool:
+            if event_id in visiting:
+                return True
+            if event_id in visited:
+                return False
+            visiting.add(event_id)
+            cyclic = any(
+                dependency in dependencies and visit(dependency)
+                for dependency in dependencies.get(event_id, ())
+            )
+            visiting.remove(event_id)
+            visited.add(event_id)
+            return cyclic
+
+        if any(visit(event_id) for event_id in event_ids):
+            issues.append({
+                "case_id": case.case_id,
+                "trace": trace_name,
+                "issue": "event dependencies contain a cycle",
+            })
+    return issues
 
 
 @dataclass(frozen=True)
