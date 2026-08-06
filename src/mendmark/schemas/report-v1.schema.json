@@ -83,6 +83,15 @@
     },
     "tools": {"$ref": "#/$defs/tools"},
     "agents": {"$ref": "#/$defs/agents"},
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["by_category", "by_operator"],
+      "properties": {
+        "by_category": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}},
+        "by_operator": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}}
+      }
+    },
     "mutations": {
       "type": "array",
       "items": {"$ref": "#/$defs/mutation"}

@@ -52,6 +52,21 @@ delegations, two returned results, one shared-state update, and a causally
 dependent aggregation. The complete evaluator kills all 44 applicable tool and
 coordination mutations.
 
+To see the failure mode Mendmark is designed to expose, run the same trace with
+an evaluator that checks only the final answer:
+
+```bash
+mendmark audit-json examples/multi_agent_suite.json \
+  --evaluator-command "python3 examples/multi_agent_weak_evaluator.py" \
+  --output /tmp/mendmark-weak-multi-agent-report.json
+```
+
+That evaluator detects 5 of 44 mutations and misses 39, including 27 critical
+failures. The terminal output groups survivors by category and adds privacy-safe
+agent, target, event, and tool identifiers. The report provides the same
+coverage both by category and by individual operator, making the next metric to
+add apparent without exposing prompts, payloads, arguments, outputs, or answers.
+
 ## Built-in coordination faults
 
 | Operator | Fault | Severity |
@@ -89,6 +104,11 @@ A useful multi-agent evaluator normally separates these concerns into metrics:
 Mendmark compares each metric with its result on the original passing case. A
 mutation is killed only when a metric changes from pass to fail. Evaluator
 errors remain infrastructure failures and never count as detections.
+
+Graph comparison should key events by stable `event_id`, normalize the
+`depends_on` set, and compare event contents. Do not compare array position:
+independent branches can be emitted in either order without changing their
+causal graph. The included complete evaluator demonstrates this normalization.
 
 The report adds privacy-safe per-agent coverage, event counts, and contract
 issues. It does not include event payloads, messages, prompts, tool arguments,

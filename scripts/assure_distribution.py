@@ -14,7 +14,13 @@ import tempfile
 from pathlib import Path
 
 
-def run(command: list[str], *, cwd: Path, env: dict[str, str]) -> str:
+def run(
+    command: list[str],
+    *,
+    cwd: Path,
+    env: dict[str, str],
+    expected_returncode: int = 0,
+) -> str:
     completed = subprocess.run(
         command,
         cwd=cwd,
@@ -24,9 +30,10 @@ def run(command: list[str], *, cwd: Path, env: dict[str, str]) -> str:
         stderr=subprocess.PIPE,
         check=False,
     )
-    if completed.returncode != 0:
+    if completed.returncode != expected_returncode:
         raise RuntimeError(
-            f"command failed ({completed.returncode}): {' '.join(command)}\n"
+            f"command returned {completed.returncode}, expected "
+            f"{expected_returncode}: {' '.join(command)}\n"
             f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
         )
     return completed.stdout
@@ -94,6 +101,7 @@ def main() -> int:
                 ("golden", "multi-agent-v1", "results.json"),
                 ("examples", "multi_agent_suite.json"),
                 ("examples", "multi_agent_evaluator.py"),
+                ("examples", "multi_agent_weak_evaluator.py"),
             }
             missing = sorted(required - members)
             if missing:
@@ -179,6 +187,44 @@ def main() -> int:
             )
         if "Gate: PASS" not in multi_output:
             raise RuntimeError("clean-wheel multi-agent audit did not clearly pass")
+
+        shutil.copyfile(
+            project_root / "examples" / "multi_agent_weak_evaluator.py",
+            workspace / "multi_agent_weak_evaluator.py",
+        )
+        weak_report_path = workspace / "weak-multi-report.json"
+        weak_output = run(
+            [
+                str(mendmark),
+                "audit-json",
+                "multi_agent_suite.json",
+                "--evaluator-command",
+                f"{python} multi_agent_weak_evaluator.py",
+                "--output",
+                str(weak_report_path),
+            ],
+            cwd=workspace,
+            env=clean_env,
+            expected_returncode=1,
+        )
+        weak_report = json.loads(weak_report_path.read_text(encoding="utf-8"))
+        if weak_report["summary"] != {
+            "cases": 1,
+            "mutants": 44,
+            "killed": 5,
+            "survived": 39,
+            "errors": 0,
+            "kill_rate": 0.113636,
+            "critical_survivors": 27,
+        }:
+            raise RuntimeError("clean-wheel weak evaluator produced unexpected results")
+        if (
+            "Survivors by category:" not in weak_output
+            or "agent=billing" not in weak_output
+            or "event=billing-result" not in weak_output
+            or "Gate: FAIL" not in weak_output
+        ):
+            raise RuntimeError("clean-wheel weak evaluator lacked actionable diagnostics")
 
     print(f"Distribution assurance passed for {wheel.name} ({version}).")
     return 0

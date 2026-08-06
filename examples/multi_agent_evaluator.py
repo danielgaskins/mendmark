@@ -6,12 +6,24 @@ import json
 import sys
 
 
+def canonical_events(events: list[dict[str, object]]) -> list[dict[str, object]]:
+    """Compare event graphs by identity and causality, not scheduler order."""
+    normalized = []
+    for raw_event in events:
+        event = dict(raw_event)
+        event["depends_on"] = sorted(event.get("depends_on", []))
+        normalized.append(event)
+    return sorted(normalized, key=lambda event: str(event.get("event_id", "")))
+
+
 def main() -> int:
     request = json.load(sys.stdin)
     evaluations = []
     for requested in request["evaluations"]:
         case = requested["case"]
-        graph_matches = case.get("events", []) == case.get("expected_events", [])
+        graph_matches = canonical_events(case.get("events", [])) == canonical_events(
+            case.get("expected_events", [])
+        )
         output_matches = case["actual_output"] == case.get("expected_output")
         evaluations.append(
             {

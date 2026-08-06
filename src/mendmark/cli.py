@@ -272,11 +272,27 @@ def _print_audit(report: dict[str, object], output: Path) -> None:
         if mutation["status"] == "survived"
     ]
     if survived:
+        categories = report["coverage"]["by_category"]
+        category_counts = [
+            f"{category}={coverage['survived']}"
+            for category, coverage in categories.items()
+            if coverage["survived"]
+        ]
+        if category_counts:
+            print("Survivors by category: " + ", ".join(category_counts))
         print("Surviving mutations:")
         for mutation in survived:
+            context = [
+                f"{field.removesuffix('_id')}={mutation[field]}"
+                for field in ("agent_id", "target_agent_id", "event_id")
+                if field in mutation
+            ]
+            if mutation.get("tool_name") is not None:
+                context.append(f"tool={mutation['tool_name']}")
+            context_text = f" ({', '.join(context)})" if context else ""
             print(
                 f"  {mutation['severity']}: {mutation['operator']} "
-                f"[{mutation['source_case_id']}]"
+                f"[{mutation['source_case_id']}]{context_text}"
             )
     print("Gate: " + ("PASS" if gate["passed"] else "FAIL"))
     for failure in gate["failures"]:

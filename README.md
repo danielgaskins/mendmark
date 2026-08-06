@@ -114,6 +114,11 @@ Native coordination behavior has its own reviewable
 python benchmarks/benchmark_multi_agent_golden_set.py
 ```
 
+For contrast, the included output-only evaluator detects just **5/44** and
+leaves **39 survivors, 27 critical**. Mendmark groups those blind spots by
+category and pinpoints the affected agent, event, and tool using privacy-safe
+identifiers. See the [multi-agent guide](docs/multi-agent.md) for both commands.
+
 ## Built for real CI
 
 <table>

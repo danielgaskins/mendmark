@@ -22,6 +22,14 @@ The automated assurance suite checks that:
   applicability counts, evaluator outcomes, and gate decisions across releases.
 - The Multi-Agent Golden Set pins agent and tool contracts, graph shape,
   mutation identities, all 44 outcomes, and the release-gate decision.
+- Independent branches may appear in either scheduler order without creating a
+  false positive; event identity and causal dependencies remain authoritative.
+- An intentionally output-only multi-agent evaluator detects just 5 of 44
+  faults. The other 39 are grouped by failure category and identify the agent,
+  event, and tool involved without exposing their payloads.
+- Every built-in mutation changes its observed case while preserving the
+  expected-output oracle, expected trace, case metadata, tags, and agent
+  declarations. Mutation generation never modifies the source case.
 - A 25-agent, 100-event graph generates stable, unique mutation IDs, while
   evaluator batching preserves result order and request limits fail before
   spawning customer code.

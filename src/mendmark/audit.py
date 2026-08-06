@@ -238,6 +238,13 @@ def _mutation_coverage(
     return coverage
 
 
+def _grouped_mutation_coverage(
+    mutation_results: list[dict[str, object]], field: str
+) -> dict[str, dict[str, object]]:
+    identifiers = tuple(sorted({str(item[field]) for item in mutation_results}))
+    return _mutation_coverage(identifiers, mutation_results, field)
+
+
 def _agent_report(
     cases: tuple[AgentCase, ...],
     tools: tuple[ToolSpec, ...],
@@ -561,6 +568,14 @@ def run_audit(
             "removed": sorted(set(previous_statuses) - set(current_mutations)),
         },
         "tools": tools_report,
+        "coverage": {
+            "by_category": _grouped_mutation_coverage(
+                mutation_results, "category"
+            ),
+            "by_operator": _grouped_mutation_coverage(
+                mutation_results, "operator"
+            ),
+        },
         "mutations": mutation_results,
     }
     if agents_report is not None:
