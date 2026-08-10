@@ -45,6 +45,7 @@ jobs:
           python -m pip_audit --path "$product_site"
 
   harness-assurance:
+    name: harness-assurance (${{ matrix.profile }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
