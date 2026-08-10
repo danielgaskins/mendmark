@@ -18,9 +18,14 @@ Mendmark 0.x is evolving, but automation still needs predictable contracts.
 - Historical benchmarks select immutable `agent-eval-v1` or `multi-agent-v1`
   mutation profiles. Ordinary audits use `current`; adding a new operator never
   rewrites an older golden-set contract.
+- Harness adapters are dependency-light and use documented public object
+  fields. Hosted CI exercises LangChain Core 1.5.3, CrewAI 1.15.14, and OpenAI
+  Agents SDK 0.19.4 as the 2026-08-10 compatibility snapshot. Newer supported
+  releases are tested through the latest-version harness matrix; Mendmark does
+  not install or pin a harness in customer environments.
 - A custom operator name is globally unique within an audit and is part of the
   customer's accepted baseline contract.
-- `audit`, `audit-json`, `prepare`, `grade`, and `show` exit with 0 for success,
+- `audit`, `audit-json`, `equip`, `prepare`, `grade`, and `show` exit with 0 for success,
   1 for a failed product gate, and 2 for invalid input or infrastructure failure.
 
 The JSON Schemas under `mendmark/schemas` are the machine-readable contract.

@@ -82,6 +82,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("tasks", help="list and validate available tasks")
 
+    equip = subparsers.add_parser(
+        "equip", help="scaffold a reviewed agent-harness integration"
+    )
+    equip.add_argument(
+        "--framework",
+        choices=("auto", "langgraph", "crewai", "openai-agents", "generic"),
+        default="auto",
+        help="detect from dependency files or select an integration (default: auto)",
+    )
+    equip.add_argument("--project-root", default=".", help="project to equip")
+    equip.add_argument(
+        "--dry-run", action="store_true", help="show files without writing them"
+    )
+    equip.add_argument(
+        "--print-agent-prompt",
+        action="store_true",
+        help="print a prompt for a repository coding agent without writing files",
+    )
+
     prepare = subparsers.add_parser("prepare", help="create a public agent workspace")
     prepare.add_argument("task_id")
     prepare.add_argument("--runs-root", default="runs")
@@ -424,6 +443,27 @@ def main(argv: list[str] | None = None) -> int:
                     f"{task.task_id}\t{task.failure_class}\t"
                     f"{task.difficulty}\t{task.title}"
                 )
+            return 0
+
+        if args.command == "equip":
+            from .equip import agent_prompt, equip_project
+
+            if args.print_agent_prompt:
+                print(agent_prompt(args.project_root))
+                return 0
+            frameworks, created, unchanged = equip_project(
+                args.project_root,
+                framework=args.framework,
+                dry_run=args.dry_run,
+            )
+            action = "Would create" if args.dry_run else "Created"
+            print("Detected: " + ", ".join(frameworks))
+            for path in created:
+                print(f"{action}: {path}")
+            for path in unchanged:
+                print(f"Unchanged: {path}")
+            if not args.dry_run:
+                print("Next: ask your coding agent to complete .mendmark/agent-setup.md")
             return 0
 
         if args.command == "prepare":
