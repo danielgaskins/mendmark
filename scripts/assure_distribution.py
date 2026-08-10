@@ -94,6 +94,7 @@ def main() -> int:
                 ("scripts", "assure_distribution.py"),
                 (".github", "allowed_signers"),
                 ("docs", "assurance.md"),
+                ("docs", "harness-integrations.md"),
                 ("golden", "agent-eval-v1", "manifest.json"),
                 ("golden", "agent-eval-v1", "suite.json"),
                 ("golden", "agent-eval-v1", "results.json"),
@@ -119,6 +120,53 @@ def main() -> int:
         help_text = run([str(mendmark), "--help"], cwd=workspace, env=clean_env)
         if "mutation-test" not in help_text.lower() or "audit-json" not in help_text:
             raise RuntimeError("installed CLI help is missing the primary product journey")
+        prompt = run(
+            [str(mendmark), "equip", "--print-agent-prompt"],
+            cwd=workspace,
+            env=clean_env,
+        )
+        if "agent-setup.md" not in prompt or "human review" not in prompt:
+            raise RuntimeError("installed wheel did not expose safe agent self-equip guidance")
+        integration_api = run(
+            [
+                str(python),
+                "-c",
+                (
+                    "from mendmark.integrations import CausalCaseBuilder, write_suite; "
+                    "from mendmark.integrations.langchain import case_from_messages; "
+                    "from mendmark.integrations.crewai import CrewAIRecorder; "
+                    "from mendmark.integrations.openai_agents import case_from_result; "
+                    "print('harness adapters ready')"
+                ),
+            ],
+            cwd=workspace,
+            env=clean_env,
+        )
+        if integration_api.strip() != "harness adapters ready":
+            raise RuntimeError("installed wheel omitted the harness integration API")
+        equip_output = run(
+            [
+                str(mendmark),
+                "equip",
+                "--framework",
+                "langgraph",
+                "--project-root",
+                str(workspace),
+            ],
+            cwd=workspace,
+            env=clean_env,
+        )
+        if "Created: .mendmark/evaluator.py" not in equip_output:
+            raise RuntimeError("installed wheel did not scaffold a harness integration")
+        for generated in (
+            "evaluator.py",
+            "agent-setup.md",
+            "mendmark-ci.yml",
+            "config.json",
+            ".gitignore",
+        ):
+            if not (workspace / ".mendmark" / generated).is_file():
+                raise RuntimeError(f"installed wheel omitted equip asset: {generated}")
         tasks = run([str(mendmark), "tasks"], cwd=workspace, env=clean_env)
         if len([line for line in tasks.splitlines() if line.strip()]) != 5:
             raise RuntimeError("installed wheel did not expose all five ML integrity tasks")

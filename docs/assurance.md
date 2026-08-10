@@ -10,6 +10,11 @@ The automated assurance suite checks that:
 - `mendmark --version`, `--help`, packaged tasks, packaged schemas, and the
   complete single- and multi-agent JSON audit journeys work from that clean
   installation.
+- Harness converters are tested with privacy-safe facsimiles and current public
+  objects from LangChain Core, CrewAI, and OpenAI Agents SDK. `mendmark equip`
+  is tested for idempotency, bounded detection, conflict refusal, symlink
+  containment, explicit expectation approval, and a complete generated
+  evaluator journey.
 - Reports, console output, JUnit, and SARIF do not expose canary values placed in
   prompts, answers, metadata, tags, tool arguments, tool outputs, or descriptions.
 - Repeated audits preserve mutation IDs, ordering, decisions, JUnit, SARIF, and

@@ -44,8 +44,33 @@ jobs:
             'import site; print(site.getsitepackages()[0])')
           python -m pip_audit --path "$product_site"
 
+  harness-assurance:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: langgraph
+            package: "langchain-core>=1,<2"
+          - profile: crewai
+            package: "crewai>=1,<2"
+          - profile: openai-agents
+            package: "openai-agents>=0.19,<1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]' '${{ matrix.package }}'
+      - name: Exercise current public harness objects
+        env:
+          MENDMARK_HARNESS: ${{ matrix.profile }}
+        run: python -m pytest tests/test_harness_live_compatibility.py
+
   build:
-    needs: assurance
+    needs: [assurance, harness-assurance]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.package-version.outputs.version }}

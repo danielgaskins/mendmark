@@ -11,6 +11,7 @@
   </p>
   <p>
     <a href="#quick-start">Quick start</a> ·
+    <a href="#equip-an-agent-harness">Harnesses</a> ·
     <a href="#agent-eval-golden-set">Golden set</a> ·
     <a href="docs/multi-agent.md">Multi-agent</a> ·
     <a href="docs/agent-mutation-audits.md">How it works</a> ·
@@ -62,6 +63,31 @@ For a native parallel multi-agent audit:
 mendmark audit-json examples/multi_agent_suite.json \
   --evaluator-command "python3 examples/multi_agent_evaluator.py"
 ```
+
+## Equip an agent harness
+
+Mendmark has dependency-light adapters for LangChain/LangGraph, CrewAI, and the
+OpenAI Agents SDK. In an existing agent repository:
+
+```bash
+python -m pip install 'mendmark-evals==0.6.0'
+mendmark equip --framework auto
+```
+
+The command detects bounded dependency files and creates a reviewed capture
+guide, offline evaluator, and inactive CI template under `.mendmark/`. It does
+not edit application code, upload a trace, overwrite existing work, enable CI,
+or accept a baseline.
+
+Want the repository's coding agent to perform the integration?
+
+```bash
+mendmark equip --print-agent-prompt
+```
+
+See the [agent harness integration guide](docs/harness-integrations.md) for the
+direct Python APIs, explicit trace-approval boundary, framework compatibility,
+and multi-agent guidance.
 
 ## See the blind spot in two minutes
 
@@ -346,7 +372,7 @@ and the [ML evaluation card](https://github.com/danielgaskins/mendmark/blob/main
 
 ## Current boundary
 
-Version 0.5 is a local, open-source engine. It does not yet provide a hosted
+Version 0.6 is a local, open-source engine. It does not yet provide a hosted
 dashboard, team accounts, remote trace ingestion, or a secrets service. The
 planned control plane is described in [the product design](https://github.com/danielgaskins/mendmark/blob/main/docs/product.md).
 

@@ -3,7 +3,24 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
-## Unreleased
+## 0.6.0 - 2026-08-10
+
+### Added
+
+- Dependency-light, public-object adapters for LangChain/LangGraph messages,
+  CrewAI events, and OpenAI Agents SDK run items, including tool-schema and
+  side-effect metadata conversion.
+- `mendmark equip` for bounded harness detection, non-destructive local
+  scaffolding, an offline evaluator, an inactive pinned CI template, and a
+  copyable coding-agent self-equip prompt.
+- Live compatibility assurance against current releases of all three harness
+  paths, plus explicit human approval before observed traces can become
+  expected behavior.
+- A fluent causal-case builder for reviewed multi-agent delegation, parallel
+  dependencies, tool authority, state changes, results, and aggregation without
+  hand-authoring schema 2.0 JSON.
+
+## 0.5.0 - 2026-08-06
 
 ### Added
 
