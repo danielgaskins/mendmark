@@ -94,6 +94,7 @@ jobs:
       - run: python -m pytest tests/test_deepeval.py tests/test_rubric_example.py
 
   harness-compatibility:
+    name: harness-compatibility (${{ matrix.profile }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
