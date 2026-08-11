@@ -91,6 +91,12 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help="detect from dependency files or select an integration (default: auto)",
     )
+    equip.add_argument(
+        "--agent",
+        choices=("auto", "codex", "claude-code", "generic", "all"),
+        default="auto",
+        help="detect or select repository coding-agent instructions (default: auto)",
+    )
     equip.add_argument("--project-root", default=".", help="project to equip")
     equip.add_argument(
         "--dry-run", action="store_true", help="show files without writing them"
@@ -446,18 +452,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "equip":
-            from .equip import agent_prompt, equip_project
+            from .equip import agent_prompt, equip_project, resolve_agent_hosts
 
             if args.print_agent_prompt:
-                print(agent_prompt(args.project_root))
+                print(agent_prompt(args.project_root, agent=args.agent))
                 return 0
+            root = Path(args.project_root).expanduser().resolve()
+            agent_hosts = resolve_agent_hosts(root, args.agent)
             frameworks, created, unchanged = equip_project(
                 args.project_root,
                 framework=args.framework,
+                agent=args.agent,
                 dry_run=args.dry_run,
             )
             action = "Would create" if args.dry_run else "Created"
             print("Detected: " + ", ".join(frameworks))
+            print("Agent host: " + ", ".join(agent_hosts))
             for path in created:
                 print(f"{action}: {path}")
             for path in unchanged:

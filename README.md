@@ -70,8 +70,8 @@ Mendmark has dependency-light adapters for LangChain/LangGraph, CrewAI, and the
 OpenAI Agents SDK. In an existing agent repository:
 
 ```bash
-python -m pip install 'mendmark-evals==0.6.0'
-mendmark equip --framework auto
+python -m pip install 'mendmark-evals==0.6.1'
+mendmark equip --framework auto --agent auto
 ```
 
 The command detects bounded dependency files and creates a reviewed capture
@@ -79,10 +79,18 @@ guide, offline evaluator, and inactive CI template under `.mendmark/`. It does
 not edit application code, upload a trace, overwrite existing work, enable CI,
 or accept a baseline.
 
-Want the repository's coding agent to perform the integration?
+Want Codex or Claude Code to perform the integration? Install its native,
+repo-scoped skill (use `all` to install both):
 
 ```bash
-mendmark equip --print-agent-prompt
+mendmark equip --framework auto --agent codex       # invoke with $mendmark
+mendmark equip --framework auto --agent claude-code # invoke with /mendmark
+```
+
+For any other repository-capable agent, print a portable self-equip prompt:
+
+```bash
+mendmark equip --agent generic --print-agent-prompt
 ```
 
 See the [agent harness integration guide](docs/harness-integrations.md) for the

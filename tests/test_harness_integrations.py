@@ -9,7 +9,13 @@ import pytest
 
 from mendmark.agent_cases import ToolCallRecord
 from mendmark.cli import main
-from mendmark.equip import EquipError, agent_prompt, detect_frameworks, equip_project
+from mendmark.equip import (
+    EquipError,
+    agent_prompt,
+    detect_agent_hosts,
+    detect_frameworks,
+    equip_project,
+)
 from mendmark.integrations import CausalCaseBuilder, HarnessIntegrationError, write_suite
 from mendmark.integrations.crewai import CrewAIRecorder, case_from_events
 from mendmark.integrations.langchain import case_from_messages, tool_specs as lc_tools
@@ -214,11 +220,11 @@ def test_equip_detects_multiple_harnesses_and_is_idempotent(tmp_path: Path) -> N
 
     frameworks, created, unchanged = equip_project(tmp_path)
     assert frameworks == ("langgraph", "openai-agents")
-    assert len(created) == 5
+    assert len(created) == 6
     assert unchanged == ()
     _, created_again, unchanged_again = equip_project(tmp_path)
     assert created_again == ()
-    assert len(unchanged_again) == 5
+    assert len(unchanged_again) == 6
     assert "approve_observed=True" in (
         tmp_path / ".mendmark" / "agent-setup.md"
     ).read_text(encoding="utf-8")
@@ -241,8 +247,55 @@ def test_equip_dry_run_prompt_and_cli(tmp_path: Path, capsys: pytest.CaptureFixt
 
     result = main(["equip", "--print-agent-prompt", "--project-root", str(tmp_path)])
     assert result == 0
-    assert "mendmark equip --framework auto" in capsys.readouterr().out
+    assert "mendmark equip --framework auto --agent auto" in capsys.readouterr().out
     assert ".mendmark/agent-setup.md" in agent_prompt()
+
+
+def test_equip_generates_native_agent_skills_and_portable_protocol(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "AGENTS.md").write_text("# Existing Codex policy\n", encoding="utf-8")
+    (tmp_path / ".claude").mkdir()
+    assert detect_agent_hosts(tmp_path) == ("codex", "claude-code")
+
+    _, created, _ = equip_project(tmp_path, framework="generic", agent="auto")
+    assert ".agents/skills/mendmark/SKILL.md" in created
+    assert ".agents/skills/mendmark/agents/openai.yaml" in created
+    assert ".claude/skills/mendmark/SKILL.md" in created
+    assert (tmp_path / "AGENTS.md").read_text(encoding="utf-8") == (
+        "# Existing Codex policy\n"
+    )
+
+    codex = (tmp_path / ".agents/skills/mendmark/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    claude = (tmp_path / ".claude/skills/mendmark/SKILL.md").read_text(
+        encoding="utf-8"
+    )
+    portable = (tmp_path / ".mendmark/SELF-EQUIP.md").read_text(encoding="utf-8")
+    assert "name: mendmark" in codex and "$mendmark" in codex
+    assert "name: mendmark" in claude and "/mendmark" in claude
+    assert "agents Mendmark does not recognize" in portable
+    assert "observed trace into expected behavior silently" in portable
+    config = json.loads((tmp_path / ".mendmark/config.json").read_text())
+    assert config["agent_hosts"] == ["codex", "claude-code"]
+    metadata = (
+        tmp_path / ".agents/skills/mendmark/agents/openai.yaml"
+    ).read_text(encoding="utf-8")
+    assert 'display_name: "Mendmark Assurance"' in metadata
+    assert "allow_implicit_invocation: true" in metadata
+
+
+def test_agent_selector_all_and_targeted_prompts(tmp_path: Path) -> None:
+    _, created, _ = equip_project(tmp_path, framework="generic", agent="all")
+    assert ".agents/skills/mendmark/SKILL.md" in created
+    assert ".claude/skills/mendmark/SKILL.md" in created
+    assert "--agent codex" in agent_prompt(agent="codex")
+    assert "$mendmark" in agent_prompt(agent="codex")
+    assert "--agent claude-code" in agent_prompt(agent="claude-code")
+    assert "/mendmark" in agent_prompt(agent="claude-code")
+    with pytest.raises(EquipError, match="unsupported coding agent"):
+        agent_prompt(agent="unknown")
 
 
 def test_equip_refuses_conflicts_and_symlink_escape(tmp_path: Path) -> None:
