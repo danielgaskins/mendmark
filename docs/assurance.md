@@ -15,6 +15,10 @@ The automated assurance suite checks that:
   is tested for idempotency, bounded detection, conflict refusal, symlink
   containment, explicit expectation approval, and a complete generated
   evaluator journey.
+- Codex and Claude Code receive repo-scoped skills in their documented native
+  locations, while an always-generated portable protocol covers unrecognized
+  coding agents. Tests verify auto-detection, explicit/all targeting, native
+  invocation names, existing-instruction preservation, and safety boundaries.
 - Reports, console output, JUnit, and SARIF do not expose canary values placed in
   prompts, answers, metadata, tags, tool arguments, tool outputs, or descriptions.
 - Repeated audits preserve mutation IDs, ordering, decisions, JUnit, SARIF, and

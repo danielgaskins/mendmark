@@ -125,7 +125,7 @@ def main() -> int:
             cwd=workspace,
             env=clean_env,
         )
-        if "agent-setup.md" not in prompt or "human review" not in prompt:
+        if "SELF-EQUIP.md" not in prompt or "human review" not in prompt:
             raise RuntimeError("installed wheel did not expose safe agent self-equip guidance")
         integration_api = run(
             [
@@ -150,6 +150,8 @@ def main() -> int:
                 "equip",
                 "--framework",
                 "langgraph",
+                "--agent",
+                "all",
                 "--project-root",
                 str(workspace),
             ],
@@ -161,12 +163,25 @@ def main() -> int:
         for generated in (
             "evaluator.py",
             "agent-setup.md",
+            "SELF-EQUIP.md",
             "mendmark-ci.yml",
             "config.json",
             ".gitignore",
         ):
             if not (workspace / ".mendmark" / generated).is_file():
                 raise RuntimeError(f"installed wheel omitted equip asset: {generated}")
+        for skill in (
+            workspace / ".agents" / "skills" / "mendmark" / "SKILL.md",
+            workspace / ".claude" / "skills" / "mendmark" / "SKILL.md",
+            workspace
+            / ".agents"
+            / "skills"
+            / "mendmark"
+            / "agents"
+            / "openai.yaml",
+        ):
+            if not skill.is_file():
+                raise RuntimeError(f"installed wheel omitted agent skill: {skill}")
         tasks = run([str(mendmark), "tasks"], cwd=workspace, env=clean_env)
         if len([line for line in tasks.splitlines() if line.strip()]) != 5:
             raise RuntimeError("installed wheel did not expose all five ML integrity tasks")

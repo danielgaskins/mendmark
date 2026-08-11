@@ -3,6 +3,24 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
+## 0.6.1 - 2026-08-10
+
+### Added
+
+- Repo-scoped Mendmark skills for Codex and Claude Code, with explicit
+  `$mendmark` and `/mendmark` invocation paths and non-destructive auto/all
+  targeting through `mendmark equip --agent`.
+- An always-generated, agent-neutral `SELF-EQUIP.md` protocol for unsupported
+  coding agents, covering harness discovery, JSON fallback, causal trace
+  fidelity, reviewed golden behavior, privacy, side effects, baselines, CI,
+  and final evidence reporting.
+
+### Changed
+
+- Self-equip metadata now records coding-agent targets, and distribution
+  assurance verifies both native skills without modifying existing
+  `AGENTS.md`, `CLAUDE.md`, or repository policy.
+
 ## 0.6.0 - 2026-08-10
 
 ### Added
