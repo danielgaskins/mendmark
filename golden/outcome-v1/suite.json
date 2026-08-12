@@ -1,0 +1,397 @@
+{
+  "cases": [
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "support-escalation",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "support-escalation"
+          },
+          "name": "crm_update",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "support-escalation"
+          },
+          "name": "ticket_update",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: resolve an escalated customer issue and preserve the service commitment",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "customer_tier": "enterprise",
+          "refund_count": 1,
+          "sla_breached": false,
+          "ticket_status": "resolved"
+        },
+        "expected_state": {
+          "customer_tier": "enterprise",
+          "ticket_status": "resolved"
+        },
+        "invariants": [
+          {
+            "description": "Customer receives exactly one remedy",
+            "expected": 1,
+            "invariant_id": "single-remedy",
+            "operator": "equals",
+            "path": "/refund_count",
+            "severity": "critical"
+          },
+          {
+            "description": "Enterprise SLA remains protected",
+            "expected": false,
+            "invariant_id": "sla-protected",
+            "operator": "equals",
+            "path": "/sla_breached",
+            "severity": "high"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "resolve an escalated customer issue and preserve the service commitment",
+        "risk": {
+          "category": "customer",
+          "estimated_loss_usd": 10000,
+          "estimated_recovery_minutes": 240,
+          "headline": "A customer escalation can be closed incorrectly",
+          "severity": "critical"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "support-escalation"
+          },
+          "name": "crm_update",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "support-escalation"
+          },
+          "name": "ticket_update",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
+    },
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "invoice-approval",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "invoice-approval"
+          },
+          "name": "erp_approve_invoice",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "invoice-approval"
+          },
+          "name": "payment_schedule",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: approve a valid invoice without duplicate payment or bypassed authority",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "approval_authorized": true,
+          "invoice_status": "approved",
+          "payment_count": 1,
+          "payment_status": "scheduled"
+        },
+        "expected_state": {
+          "invoice_status": "approved",
+          "payment_status": "scheduled"
+        },
+        "invariants": [
+          {
+            "description": "Invoice is never scheduled for payment twice",
+            "expected": 1,
+            "invariant_id": "no-duplicate-payment",
+            "operator": "equals",
+            "path": "/payment_count",
+            "severity": "critical"
+          },
+          {
+            "description": "Approval authority is preserved",
+            "expected": true,
+            "invariant_id": "approval-authorized",
+            "operator": "equals",
+            "path": "/approval_authorized",
+            "severity": "critical"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "approve a valid invoice without duplicate payment or bypassed authority",
+        "risk": {
+          "category": "financial",
+          "estimated_loss_usd": 50000,
+          "estimated_recovery_minutes": 480,
+          "headline": "An invoice can be paid incorrectly",
+          "severity": "critical"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "invoice-approval"
+          },
+          "name": "erp_approve_invoice",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "invoice-approval"
+          },
+          "name": "payment_schedule",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
+    },
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "employee-access",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-access"
+          },
+          "name": "hris_lookup",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-access"
+          },
+          "name": "identity_provision",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: provision a new employee with least-privilege access",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "account_status": "provisioned",
+          "admin_access": false,
+          "employment_status": "active",
+          "manager_approved": true
+        },
+        "expected_state": {
+          "account_status": "provisioned",
+          "employment_status": "active"
+        },
+        "invariants": [
+          {
+            "description": "Administrative access is not granted",
+            "expected": false,
+            "invariant_id": "least-privilege",
+            "operator": "equals",
+            "path": "/admin_access",
+            "severity": "critical"
+          },
+          {
+            "description": "Manager approval is recorded",
+            "expected": true,
+            "invariant_id": "manager-approved",
+            "operator": "equals",
+            "path": "/manager_approved",
+            "severity": "critical"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "provision a new employee with least-privilege access",
+        "risk": {
+          "category": "security",
+          "estimated_loss_usd": 25000,
+          "estimated_recovery_minutes": 360,
+          "headline": "An employee can receive unauthorized access",
+          "severity": "critical"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-access"
+          },
+          "name": "hris_lookup",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-access"
+          },
+          "name": "identity_provision",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
+    }
+  ],
+  "schema_version": "1.0",
+  "tools": [
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "crm_update",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "erp_approve_invoice",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "hris_lookup",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "identity_provision",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "payment_schedule",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "ticket_update",
+      "side_effecting": true
+    }
+  ]
+}

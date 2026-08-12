@@ -25,6 +25,8 @@ jobs:
         run: python benchmarks/benchmark_multi_agent_golden_set.py
       - name: Verify the Multi-Agent Golden Set v2
         run: python benchmarks/benchmark_multi_agent_golden_set_v2.py
+      - name: Verify the Enterprise Outcome Golden Set
+        run: python benchmarks/benchmark_outcome_golden_set.py
 
   enterprise-assurance:
     runs-on: ubuntu-latest

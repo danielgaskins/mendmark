@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, replace
 from typing import Any, Protocol
 
-from .agent_cases import AgentCase, AgentEvent, ToolCallRecord, ToolSpec
+from .agent_cases import AgentCase, AgentEvent, OutcomeInvariant, ToolCallRecord, ToolSpec
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,11 @@ class Mutant:
     agent_id: str | None = None
     target_agent_id: str | None = None
     event_id: str | None = None
+    assurance_layer: str | None = None
+    business_headline: str | None = None
+    risk_category: str | None = None
+    estimated_loss_usd: float | None = None
+    estimated_recovery_minutes: int | None = None
 
 
 class MutationOperator(Protocol):
@@ -87,19 +93,30 @@ def _mutant(
     agent_id: str | None = None,
     target_agent_id: str | None = None,
     event_id: str | None = None,
+    severity: str | None = None,
+    assurance_layer: str | None = None,
+    business_headline: str | None = None,
+    risk_category: str | None = None,
+    estimated_loss_usd: float | None = None,
+    estimated_recovery_minutes: int | None = None,
 ) -> Mutant:
     return Mutant(
         mutant_id=f"{case.case_id}:{operator.name}:{suffix}",
         operator=operator.name,
         category=operator.category,
         description=description or operator.description,
-        severity=operator.severity,
+        severity=severity or operator.severity,
         source_case_id=case.case_id,
         case=changed,
         tool_name=tool_name,
         agent_id=agent_id,
         target_agent_id=target_agent_id,
         event_id=event_id,
+        assurance_layer=assurance_layer,
+        business_headline=business_headline,
+        risk_category=risk_category,
+        estimated_loss_usd=estimated_loss_usd,
+        estimated_recovery_minutes=estimated_recovery_minutes,
     )
 
 
@@ -205,6 +222,76 @@ def _changed_scalar(value: Any) -> Any:
     if value is None:
         return "__mendmark_mutated"
     return "__mendmark_mutated"
+
+
+def _pointer_tokens(pointer: str) -> list[str]:
+    if not pointer:
+        return []
+    return [
+        token.replace("~1", "/").replace("~0", "~")
+        for token in pointer[1:].split("/")
+    ]
+
+
+def _leaf_pointers(value: Any, pointer: str = "") -> list[str]:
+    if isinstance(value, dict) and value:
+        paths: list[str] = []
+        for key in sorted(value):
+            token = str(key).replace("~", "~0").replace("/", "~1")
+            paths.extend(_leaf_pointers(value[key], f"{pointer}/{token}"))
+        return paths
+    if isinstance(value, list) and value:
+        paths = []
+        for index, item in enumerate(value):
+            paths.extend(_leaf_pointers(item, f"{pointer}/{index}"))
+        return paths
+    return [pointer]
+
+
+def _change_at_pointer(
+    state: dict[str, Any], pointer: str, *, remove: bool
+) -> dict[str, Any] | None:
+    changed = deepcopy(state)
+    tokens = _pointer_tokens(pointer)
+    if not tokens:
+        return None
+    parent: Any = changed
+    for token in tokens[:-1]:
+        if isinstance(parent, dict) and token in parent:
+            parent = parent[token]
+        elif isinstance(parent, list) and token.isdigit() and int(token) < len(parent):
+            parent = parent[int(token)]
+        else:
+            return None
+    last = tokens[-1]
+    if isinstance(parent, dict) and last in parent:
+        if remove:
+            del parent[last]
+        else:
+            parent[last] = _changed_scalar(parent[last])
+        return changed
+    if isinstance(parent, list) and last.isdigit() and int(last) < len(parent):
+        index = int(last)
+        if remove:
+            parent.pop(index)
+        else:
+            parent[index] = _changed_scalar(parent[index])
+        return changed
+    return None
+
+
+def _risk_fields(case: AgentCase, fallback: str) -> dict[str, Any]:
+    risk = case.outcome.risk if case.outcome is not None else None
+    return {
+        "assurance_layer": "outcome-integrity",
+        "business_headline": risk.headline if risk is not None else fallback,
+        "risk_category": risk.category if risk is not None else "operational",
+        "severity": risk.severity if risk is not None else "critical",
+        "estimated_loss_usd": risk.estimated_loss_usd if risk is not None else None,
+        "estimated_recovery_minutes": (
+            risk.estimated_recovery_minutes if risk is not None else None
+        ),
+    }
 
 
 def _mutate_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
@@ -731,6 +818,156 @@ class ReplaceFinalResponse:
                 suffix="final",
             )
         ]
+
+
+class RemoveRequiredOutcomeState:
+    name = "outcome.required_state_missing"
+    category = "business-outcome"
+    description = "Required business state was missing after the workflow"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.outcome is None or not case.outcome.expected_state:
+            return []
+        mutants = []
+        for index, pointer in enumerate(_leaf_pointers(case.outcome.expected_state)):
+            state = _change_at_pointer(case.outcome.actual_state, pointer, remove=True)
+            if state is None:
+                continue
+            changed = case.with_changes(outcome=replace(case.outcome, actual_state=state))
+            mutants.append(_mutant(
+                self,
+                case,
+                changed,
+                suffix=str(index),
+                **_risk_fields(case, f"Required outcome may be missing: {case.outcome.objective}"),
+            ))
+        return mutants
+
+
+class CorruptOutcomeState:
+    name = "outcome.state_corrupted"
+    category = "business-outcome"
+    description = "A required business-state value was changed"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.outcome is None or not case.outcome.expected_state:
+            return []
+        mutants = []
+        for index, pointer in enumerate(_leaf_pointers(case.outcome.expected_state)):
+            state = _change_at_pointer(case.outcome.actual_state, pointer, remove=False)
+            if state is None:
+                continue
+            changed = case.with_changes(outcome=replace(case.outcome, actual_state=state))
+            mutants.append(_mutant(
+                self,
+                case,
+                changed,
+                suffix=str(index),
+                **_risk_fields(case, f"Outcome can be incorrect without detection: {case.outcome.objective}"),
+            ))
+        return mutants
+
+
+def _violate_invariant(state: dict[str, Any], invariant: OutcomeInvariant) -> dict[str, Any] | None:
+    if invariant.operator in {"exists", "equals", "contains"}:
+        return _change_at_pointer(state, invariant.path, remove=True)
+
+    tokens = _pointer_tokens(invariant.path)
+    if not tokens:
+        return None
+    result = deepcopy(state)
+    current: Any = result
+    for token in tokens[:-1]:
+        if not isinstance(current, dict):
+            return None
+        child = current.get(token)
+        if not isinstance(child, dict):
+            child = {}
+            current[token] = child
+        current = child
+    if not isinstance(current, dict):
+        return None
+    leaf = tokens[-1]
+    if invariant.operator in {"not_exists", "not_equals"}:
+        current[leaf] = invariant.expected if invariant.operator == "not_equals" else "__mendmark_mutated"
+    elif invariant.operator == "greater_than_or_equal":
+        if not isinstance(invariant.expected, (int, float)) or isinstance(invariant.expected, bool):
+            return None
+        current[leaf] = invariant.expected - 1
+    elif invariant.operator == "less_than_or_equal":
+        if not isinstance(invariant.expected, (int, float)) or isinstance(invariant.expected, bool):
+            return None
+        current[leaf] = invariant.expected + 1
+    else:
+        return None
+    return result
+
+
+class ViolateOutcomeInvariant:
+    name = "outcome.invariant_violated"
+    category = "business-invariant"
+    description = "A reviewed business invariant was violated"
+    severity = "critical"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        if case.outcome is None:
+            return []
+        mutants = []
+        for invariant in case.outcome.invariants:
+            state = _violate_invariant(case.outcome.actual_state, invariant)
+            if state is None:
+                continue
+            changed = case.with_changes(outcome=replace(case.outcome, actual_state=state))
+            fields = _risk_fields(case, invariant.description)
+            fields["assurance_layer"] = "business-invariants"
+            fields["business_headline"] = invariant.description
+            fields["severity"] = invariant.severity
+            mutants.append(_mutant(
+                self, case, changed, suffix=invariant.invariant_id, **fields
+            ))
+        return mutants
+
+
+class ExceedOutcomeCostBudget:
+    name = "outcome.cost_budget_exceeded"
+    category = "business-efficiency"
+    description = "Workflow cost exceeded the reviewed business budget"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        contract = case.outcome
+        if contract is None or contract.maximum_cost_usd is None:
+            return []
+        changed_contract = replace(
+            contract,
+            actual_cost_usd=contract.maximum_cost_usd
+            + max(0.01, contract.maximum_cost_usd * 0.1),
+        )
+        fields = _risk_fields(case, f"Workflow cost can exceed budget: {contract.objective}")
+        fields["assurance_layer"] = "execution-quality"
+        fields["severity"] = "high"
+        return [_mutant(self, case, case.with_changes(outcome=changed_contract), suffix="budget", **fields)]
+
+
+class ExceedOutcomeLatencyBudget:
+    name = "outcome.latency_budget_exceeded"
+    category = "business-efficiency"
+    description = "Workflow duration exceeded the reviewed service budget"
+    severity = "high"
+
+    def mutate(self, case: AgentCase, tools: tuple[ToolSpec, ...]) -> list[Mutant]:
+        contract = case.outcome
+        if contract is None or contract.maximum_duration_ms is None:
+            return []
+        changed_contract = replace(
+            contract, actual_duration_ms=contract.maximum_duration_ms + 1
+        )
+        fields = _risk_fields(case, f"Workflow can miss its service target: {contract.objective}")
+        fields["assurance_layer"] = "execution-quality"
+        fields["severity"] = "high"
+        return [_mutant(self, case, case.with_changes(outcome=changed_contract), suffix="budget", **fields)]
 
 
 class RemoveDelegation:
@@ -1387,6 +1624,11 @@ DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
     )
     + MULTI_AGENT_V1_MUTATIONS[len(AGENT_EVAL_V1_MUTATIONS) :]
     + (
+        RemoveRequiredOutcomeState(),
+        CorruptOutcomeState(),
+        ViolateOutcomeInvariant(),
+        ExceedOutcomeCostBudget(),
+        ExceedOutcomeLatencyBudget(),
         DuplicateDelegation(),
         DuplicateAgentResult(),
         PrematureAggregation(),
@@ -1394,6 +1636,14 @@ DEFAULT_MUTATIONS: tuple[MutationOperator, ...] = (
         AbandonDelegatedBranch(),
         ChangeResultRequestIdentity(),
     )
+)
+
+OUTCOME_FIRST_MUTATIONS: tuple[MutationOperator, ...] = (
+    RemoveRequiredOutcomeState(),
+    CorruptOutcomeState(),
+    ViolateOutcomeInvariant(),
+    ExceedOutcomeCostBudget(),
+    ExceedOutcomeLatencyBudget(),
 )
 
 
@@ -1436,11 +1686,15 @@ def generate_mutants(
                     raise MutationPluginError(
                         f"mutation {mutant.mutant_id!r} changed the case id"
                     )
-                for field in ("category", "description", "severity"):
+                for field in ("category", "description"):
                     if getattr(mutant, field) != getattr(operator, field):
                         raise MutationPluginError(
                             f"mutation {mutant.mutant_id!r} has inconsistent {field}"
                         )
+                if mutant.severity not in {"low", "medium", "high", "critical"}:
+                    raise MutationPluginError(
+                        f"mutation {mutant.mutant_id!r} has invalid severity"
+                    )
                 if not mutant.mutant_id.startswith(prefix):
                     raise MutationPluginError(
                         f"mutation id {mutant.mutant_id!r} must start with {prefix!r}"

@@ -4,8 +4,139 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import re
 from dataclasses import dataclass, field, replace
 from typing import Any
+
+
+_RISK_SEVERITIES = {"low", "medium", "high", "critical"}
+_RISK_CATEGORIES = {
+    "financial",
+    "operational",
+    "compliance",
+    "customer",
+    "security",
+    "reputation",
+}
+_ASSERTION_OPERATORS = {
+    "equals",
+    "not_equals",
+    "exists",
+    "not_exists",
+    "greater_than_or_equal",
+    "less_than_or_equal",
+    "contains",
+}
+
+
+@dataclass(frozen=True)
+class OutcomeRisk:
+    """Business-readable consequence metadata; never includes case payloads."""
+
+    headline: str
+    category: str = "operational"
+    severity: str = "critical"
+    estimated_loss_usd: float | None = None
+    estimated_recovery_minutes: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.headline.strip() or len(self.headline) > 512:
+            raise ValueError("outcome risk headline must be 1 to 512 characters")
+        if self.category not in _RISK_CATEGORIES:
+            raise ValueError("outcome risk category is unsupported")
+        if self.severity not in _RISK_SEVERITIES:
+            raise ValueError("outcome risk severity is unsupported")
+        if self.estimated_loss_usd is not None and (
+            isinstance(self.estimated_loss_usd, bool)
+            or not isinstance(self.estimated_loss_usd, (int, float))
+            or not math.isfinite(self.estimated_loss_usd)
+            or self.estimated_loss_usd < 0
+        ):
+            raise ValueError("estimated_loss_usd must be non-negative")
+        if self.estimated_recovery_minutes is not None and (
+            isinstance(self.estimated_recovery_minutes, bool)
+            or not isinstance(self.estimated_recovery_minutes, int)
+            or self.estimated_recovery_minutes < 0
+        ):
+            raise ValueError("estimated_recovery_minutes must be non-negative")
+
+
+@dataclass(frozen=True)
+class OutcomeInvariant:
+    """A business invariant evaluated against outcome state via JSON Pointer."""
+
+    invariant_id: str
+    description: str
+    path: str
+    operator: str
+    expected: Any = None
+    severity: str = "critical"
+
+    def __post_init__(self) -> None:
+        if not self.invariant_id.strip() or len(self.invariant_id) > 512:
+            raise ValueError("outcome invariant id must be 1 to 512 characters")
+        if not self.description.strip() or len(self.description) > 512:
+            raise ValueError("outcome invariant description must be 1 to 512 characters")
+        if not self.path.startswith("/") or re.search(r"~(?:[^01]|$)", self.path):
+            raise ValueError("outcome invariant path must be an RFC 6901 JSON Pointer")
+        if self.operator not in _ASSERTION_OPERATORS:
+            raise ValueError("outcome invariant operator is unsupported")
+        if self.severity not in _RISK_SEVERITIES:
+            raise ValueError("outcome invariant severity is unsupported")
+        if self.operator in {"greater_than_or_equal", "less_than_or_equal"} and (
+            isinstance(self.expected, bool)
+            or not isinstance(self.expected, (int, float))
+            or not math.isfinite(self.expected)
+        ):
+            raise ValueError("ordered outcome invariant expected value must be finite numeric")
+
+
+@dataclass(frozen=True)
+class OutcomeContract:
+    """Externally meaningful state and constraints for a business objective."""
+
+    objective: str
+    actual_state: dict[str, Any] = field(default_factory=dict)
+    expected_state: dict[str, Any] = field(default_factory=dict)
+    invariants: tuple[OutcomeInvariant, ...] = ()
+    risk: OutcomeRisk | None = None
+    actual_cost_usd: float | None = None
+    maximum_cost_usd: float | None = None
+    actual_duration_ms: int | None = None
+    maximum_duration_ms: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.objective.strip() or len(self.objective) > 512:
+            raise ValueError("outcome objective must be 1 to 512 characters")
+        if not isinstance(self.actual_state, dict) or not isinstance(
+            self.expected_state, dict
+        ):
+            raise ValueError("outcome actual_state and expected_state must be objects")
+        if not isinstance(self.invariants, tuple) or not all(
+            isinstance(item, OutcomeInvariant) for item in self.invariants
+        ):
+            raise ValueError("outcome invariants must be a tuple of OutcomeInvariant")
+        if self.risk is not None and not isinstance(self.risk, OutcomeRisk):
+            raise ValueError("outcome risk must be an OutcomeRisk")
+        ids = [item.invariant_id for item in self.invariants]
+        if len(ids) != len(set(ids)):
+            raise ValueError("outcome invariant ids must be unique")
+        for name in ("actual_cost_usd", "maximum_cost_usd"):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value < 0
+            ):
+                raise ValueError(f"{name} must be non-negative")
+        for name in ("actual_duration_ms", "maximum_duration_ms"):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool) or not isinstance(value, int) or value < 0
+            ):
+                raise ValueError(f"{name} must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -68,6 +199,7 @@ class AgentCase:
     events: tuple[AgentEvent, ...] = ()
     expected_events: tuple[AgentEvent, ...] = ()
     root_agent_id: str | None = None
+    outcome: OutcomeContract | None = None
 
     def with_changes(self, **changes: Any) -> "AgentCase":
         return replace(self, **changes)

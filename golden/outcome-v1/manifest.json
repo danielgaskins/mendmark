@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "name": "Mendmark Enterprise Outcome Golden Set",
+  "version": "outcome-v1",
+  "license": "MIT",
+  "suite": "suite.json",
+  "suite_sha256": "ec3150e5fbc4639ff09454ce68a58e0999cde52eb04b73a216d48f6a3594a2de",
+  "assets": {
+    "suite-v1.schema.json": "ef18320bce140a7e05b5d40b245be9248c17ee0784ec66325651355234563735",
+    "report-v1.schema.json": "6bff193ec67b38d7970fdeff3ce931bd828fa737775b98ea40c02493d6607874"
+  },
+  "contents": {
+    "cases": 3,
+    "system_boundaries": 6,
+    "invariants": 6,
+    "mutations": 24,
+    "domains": ["customer-support", "finance", "identity"]
+  },
+  "methodology": {
+    "unit": "A passing workflow with reviewed outcome state, safeguards, and operating limits.",
+    "generation": "Every applicable outcome-first operator is applied once per eligible state leaf, invariant, or budget.",
+    "oracle": "The state-only profile checks expected state; the outcome-contract profile also checks invariants and budgets.",
+    "scoring": "A mutation is killed only when a metric passes on the original and fails on the mutated case.",
+    "reproducibility": "Suite bytes, aggregate summaries, schemas, and expected profile results are pinned."
+  }
+}
