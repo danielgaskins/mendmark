@@ -4,17 +4,45 @@
   "version": "outcome-v1",
   "license": "MIT",
   "suite": "suite.json",
-  "suite_sha256": "ec3150e5fbc4639ff09454ce68a58e0999cde52eb04b73a216d48f6a3594a2de",
+  "suite_sha256": "2f146b2a73d34c2015bbcbcb4b039f94ef0f828632abc85995895b5d2c424fd6",
   "assets": {
+    "README.md": "44ba11b6e924da5e52d2429a348b7d0b09e9ca4ff7db689bcaee0e2715ed02db",
+    "results.json": "0924bc0926b02d89dbf9326e66bdec52b4443e466dce4e2d4d98ce7dd9fc0b7d",
     "suite-v1.schema.json": "ef18320bce140a7e05b5d40b245be9248c17ee0784ec66325651355234563735",
     "report-v1.schema.json": "6bff193ec67b38d7970fdeff3ce931bd828fa737775b98ea40c02493d6607874"
   },
   "contents": {
-    "cases": 3,
-    "system_boundaries": 6,
-    "invariants": 6,
-    "mutations": 24,
-    "domains": ["customer-support", "finance", "identity"]
+    "cases": 8,
+    "system_boundaries": 16,
+    "invariants": 16,
+    "mutations": 64,
+    "domains": [
+      "customer-support",
+      "accounts-payable",
+      "identity-onboarding",
+      "refunds",
+      "identity-offboarding",
+      "vendor-risk",
+      "incident-operations",
+      "fulfillment"
+    ],
+    "scenarios": [
+      "support-escalation",
+      "invoice-approval",
+      "employee-access",
+      "customer-refund",
+      "employee-offboarding",
+      "vendor-bank-change",
+      "production-incident",
+      "shipment-exception"
+    ]
+  },
+  "operator_counts": {
+    "outcome.required_state_missing": 16,
+    "outcome.state_corrupted": 16,
+    "outcome.invariant_violated": 16,
+    "outcome.cost_budget_exceeded": 8,
+    "outcome.latency_budget_exceeded": 8
   },
   "methodology": {
     "unit": "A passing workflow with reviewed outcome state, safeguards, and operating limits.",

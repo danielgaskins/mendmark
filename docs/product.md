@@ -97,8 +97,9 @@ do not require raw trace ingestion.
 - Native single-agent traces and multi-agent causal event graphs.
 - DeepEval suite adapter.
 - Framework-neutral JSON suite and local batch evaluator protocol.
-- Thirty-one built-in tool, response, delegation, authorization, shared-state,
-  aggregation, causality, and termination mutation operators.
+- Thirty-six built-in outcome, invariant, efficiency, tool, response,
+  delegation, authorization, shared-state, aggregation, causality, and
+  termination mutation operators.
 - Validated domain-specific mutation plugins.
 - Per-tool coverage and tool schema tracking.
 - Baseline regression gates.
@@ -112,6 +113,9 @@ do not require raw trace ingestion.
 - Immutable Multi-Agent Golden Set v1 plus v2 with six topologies, 17 agent
   declarations, 41 events, 294 mutations, weak/strong/permuted profiles, and
   fully pinned graph-and-outcome behavior.
+- Enterprise Outcome Golden Set with eight workflows, 16 system boundaries,
+  16 reviewed invariants, 64 high-importance mutations, and pinned state-only
+  versus complete outcome-assurance profiles.
 - Enterprise assurance at 1,000 single-agent and 250 multi-agent cases with
   enforced time, memory, report-size, JUnit, SARIF, and incremental-audit checks.
 - A machine-validated, privacy-safe design-partner evidence rubric and utility

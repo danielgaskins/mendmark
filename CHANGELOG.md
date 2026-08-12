@@ -3,6 +3,23 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
+## 0.7.1 - 2026-08-12
+
+### Added
+
+- Five generalized real-world outcome scenarios covering customer refunds,
+  employee offboarding, vendor bank-detail changes, production incident
+  remediation, and shipment exceptions.
+- Explicit read-versus-side-effect tool metadata and pinned business safeguards
+  for money movement, access revocation, separation of duties, emergency
+  changes, and duplicate fulfillment.
+
+### Changed
+
+- The Enterprise Outcome Golden Set now contains eight workflows, 16 system
+  boundaries, 16 invariants, and 64 mutations; state-only assurance detects
+  32/64 while complete outcome assurance detects 64/64.
+
 ## 0.7.0 - 2026-08-12
 
 ### Added

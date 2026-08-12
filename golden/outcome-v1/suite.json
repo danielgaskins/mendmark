@@ -287,6 +287,486 @@
           }
         }
       ]
+    },
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "customer-refund",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "customer-refund"
+          },
+          "name": "order_lookup",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "customer-refund"
+          },
+          "name": "payment_refund",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: issue an approved customer refund exactly once and close the request",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "refund_amount_usd": 125.0,
+          "refund_count": 1,
+          "refund_status": "issued",
+          "request_status": "closed"
+        },
+        "expected_state": {
+          "refund_status": "issued",
+          "request_status": "closed"
+        },
+        "invariants": [
+          {
+            "description": "The approved refund is issued exactly once",
+            "expected": 1,
+            "invariant_id": "single-refund",
+            "operator": "equals",
+            "path": "/refund_count",
+            "severity": "critical"
+          },
+          {
+            "description": "Refund amount does not exceed the approved amount",
+            "expected": 125.0,
+            "invariant_id": "amount-authorized",
+            "operator": "less_than_or_equal",
+            "path": "/refund_amount_usd",
+            "severity": "critical"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "issue an approved customer refund exactly once and close the request",
+        "risk": {
+          "category": "financial",
+          "estimated_loss_usd": 2000,
+          "estimated_recovery_minutes": 120,
+          "headline": "A customer refund can be duplicated or exceed approval",
+          "severity": "critical"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "customer-refund"
+          },
+          "name": "order_lookup",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "customer-refund"
+          },
+          "name": "payment_refund",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
+    },
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "employee-offboarding",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-offboarding"
+          },
+          "name": "hris_terminate",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-offboarding"
+          },
+          "name": "identity_revoke",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: terminate a departing employee and revoke access while preserving holds",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "access_status": "revoked",
+          "employment_status": "terminated",
+          "legal_hold_preserved": true,
+          "privileged_sessions": 0
+        },
+        "expected_state": {
+          "access_status": "revoked",
+          "employment_status": "terminated"
+        },
+        "invariants": [
+          {
+            "description": "No privileged session remains active",
+            "expected": 0,
+            "invariant_id": "no-active-sessions",
+            "operator": "equals",
+            "path": "/privileged_sessions",
+            "severity": "critical"
+          },
+          {
+            "description": "Required retention and legal holds remain preserved",
+            "expected": true,
+            "invariant_id": "hold-preserved",
+            "operator": "equals",
+            "path": "/legal_hold_preserved",
+            "severity": "critical"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "terminate a departing employee and revoke access while preserving holds",
+        "risk": {
+          "category": "security",
+          "estimated_loss_usd": 100000,
+          "estimated_recovery_minutes": 480,
+          "headline": "A departed employee can retain access or required records can be lost",
+          "severity": "critical"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-offboarding"
+          },
+          "name": "hris_terminate",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "employee-offboarding"
+          },
+          "name": "identity_revoke",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
+    },
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "vendor-bank-change",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "vendor-bank-change"
+          },
+          "name": "vendor_master_stage",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "vendor-bank-change"
+          },
+          "name": "payment_hold",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: stage a vendor bank-detail change for dual review and hold payments",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "approver_count": 2,
+          "change_status": "pending_review",
+          "payment_status": "held",
+          "requester_is_approver": false
+        },
+        "expected_state": {
+          "change_status": "pending_review",
+          "payment_status": "held"
+        },
+        "invariants": [
+          {
+            "description": "At least two independent approvers are required",
+            "expected": 2,
+            "invariant_id": "dual-control",
+            "operator": "greater_than_or_equal",
+            "path": "/approver_count",
+            "severity": "critical"
+          },
+          {
+            "description": "The requester cannot approve the bank-detail change",
+            "expected": false,
+            "invariant_id": "separation-of-duties",
+            "operator": "equals",
+            "path": "/requester_is_approver",
+            "severity": "critical"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "stage a vendor bank-detail change for dual review and hold payments",
+        "risk": {
+          "category": "financial",
+          "estimated_loss_usd": 250000,
+          "estimated_recovery_minutes": 720,
+          "headline": "A fraudulent vendor bank change can release a misdirected payment",
+          "severity": "critical"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "vendor-bank-change"
+          },
+          "name": "vendor_master_stage",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "vendor-bank-change"
+          },
+          "name": "payment_hold",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
+    },
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "production-incident",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "production-incident"
+          },
+          "name": "monitoring_query",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "production-incident"
+          },
+          "name": "service_rollback",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: contain a production incident and restore service through an approved change",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "change_authorized": true,
+          "incident_status": "contained",
+          "rollback_verified": true,
+          "service_status": "restored"
+        },
+        "expected_state": {
+          "incident_status": "contained",
+          "service_status": "restored"
+        },
+        "invariants": [
+          {
+            "description": "Service health is verified after rollback",
+            "expected": true,
+            "invariant_id": "rollback-verified",
+            "operator": "equals",
+            "path": "/rollback_verified",
+            "severity": "critical"
+          },
+          {
+            "description": "The emergency production change remains authorized",
+            "expected": true,
+            "invariant_id": "change-authorized",
+            "operator": "equals",
+            "path": "/change_authorized",
+            "severity": "critical"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "contain a production incident and restore service through an approved change",
+        "risk": {
+          "category": "operational",
+          "estimated_loss_usd": 75000,
+          "estimated_recovery_minutes": 600,
+          "headline": "An incident can remain active or an unsafe change can reach production",
+          "severity": "critical"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "production-incident"
+          },
+          "name": "monitoring_query",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "production-incident"
+          },
+          "name": "service_rollback",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
+    },
+    {
+      "actual_output": "The workflow completed.",
+      "case_id": "shipment-exception",
+      "expected_output": "The workflow completed.",
+      "expected_tools": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "shipment-exception"
+          },
+          "name": "carrier_reroute",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "shipment-exception"
+          },
+          "name": "customer_notify",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ],
+      "input": "Complete the reviewed workflow: reroute a delayed shipment and notify the customer without duplication",
+      "metadata": {},
+      "outcome": {
+        "actual_cost_usd": 0.18,
+        "actual_duration_ms": 12000,
+        "actual_state": {
+          "address_validated": true,
+          "customer_status": "notified",
+          "replacement_count": 1,
+          "shipment_status": "rerouted"
+        },
+        "expected_state": {
+          "customer_status": "notified",
+          "shipment_status": "rerouted"
+        },
+        "invariants": [
+          {
+            "description": "At most one replacement shipment is created",
+            "expected": 1,
+            "invariant_id": "single-replacement",
+            "operator": "less_than_or_equal",
+            "path": "/replacement_count",
+            "severity": "high"
+          },
+          {
+            "description": "The destination address is validated before rerouting",
+            "expected": true,
+            "invariant_id": "address-validated",
+            "operator": "equals",
+            "path": "/address_validated",
+            "severity": "high"
+          }
+        ],
+        "maximum_cost_usd": 0.5,
+        "maximum_duration_ms": 30000,
+        "objective": "reroute a delayed shipment and notify the customer without duplication",
+        "risk": {
+          "category": "customer",
+          "estimated_loss_usd": 5000,
+          "estimated_recovery_minutes": 180,
+          "headline": "A shipment exception can create duplicate fulfillment or misdelivery",
+          "severity": "high"
+        }
+      },
+      "tags": [
+        "enterprise-demo"
+      ],
+      "tools_called": [
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "shipment-exception"
+          },
+          "name": "carrier_reroute",
+          "output": {
+            "status": "ok"
+          }
+        },
+        {
+          "description": null,
+          "input_parameters": {
+            "record_id": "shipment-exception"
+          },
+          "name": "customer_notify",
+          "output": {
+            "status": "ok"
+          }
+        }
+      ]
     }
   ],
   "schema_version": "1.0",
@@ -305,7 +785,41 @@
         ],
         "type": "object"
       },
+      "name": "carrier_reroute",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
       "name": "crm_update",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "customer_notify",
       "side_effecting": true
     },
     {
@@ -340,6 +854,23 @@
         "type": "object"
       },
       "name": "hris_lookup",
+      "side_effecting": false
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "hris_terminate",
       "side_effecting": true
     },
     {
@@ -373,6 +904,91 @@
         ],
         "type": "object"
       },
+      "name": "identity_revoke",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "monitoring_query",
+      "side_effecting": false
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "order_lookup",
+      "side_effecting": false
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "payment_hold",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "payment_refund",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
       "name": "payment_schedule",
       "side_effecting": true
     },
@@ -390,7 +1006,41 @@
         ],
         "type": "object"
       },
+      "name": "service_rollback",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
       "name": "ticket_update",
+      "side_effecting": true
+    },
+    {
+      "description": null,
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id"
+        ],
+        "type": "object"
+      },
+      "name": "vendor_master_stage",
       "side_effecting": true
     }
   ]

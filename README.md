@@ -45,8 +45,8 @@ mendmark demo
 ```
 
 The command compares a conventional state-only evaluator with complete outcome
-assurance across CRM + ticketing, ERP + payments, and HRIS + identity workflows.
-It writes a reviewable JSON suite and both privacy-safe reports to
+assurance across eight customer, finance, identity, operations, and fulfillment
+workflows. It writes a reviewable JSON suite and both privacy-safe reports to
 `mendmark-enterprise-demo/`.
 
 Audit a reviewed outcome suite directly—without an evaluator framework or
@@ -96,7 +96,7 @@ Mendmark has dependency-light adapters for LangChain/LangGraph, CrewAI, and the
 OpenAI Agents SDK. In an existing agent repository:
 
 ```bash
-python -m pip install 'mendmark-evals==0.7.0'
+python -m pip install 'mendmark-evals==0.7.1'
 mendmark equip --framework auto --agent auto
 ```
 
@@ -150,9 +150,11 @@ contract model and decision rule.
 ## Agent Eval Golden Set
 
 The [Enterprise Outcome Golden Set](golden/outcome-v1/) targets the business
-surface directly: three common workflows, six system boundaries, six reviewed
-invariants, and 24 high-importance mutations. Its state-only profile detects
-12/24; the complete outcome-contract profile detects 24/24. Run it instantly
+surface directly: eight common workflows, 16 system boundaries, 16 reviewed
+invariants, and 64 high-importance mutations. It covers support escalation,
+invoice approval, onboarding, refunds, offboarding, vendor bank changes,
+incident remediation, and shipment exceptions. Its state-only profile detects
+32/64; the complete outcome-contract profile detects 64/64. Run it instantly
 with `mendmark demo`.
 
 The [Mendmark Agent Eval Golden Set](golden/agent-eval-v1/) is the canonical,
@@ -427,7 +429,7 @@ and the [ML evaluation card](https://github.com/danielgaskins/mendmark/blob/main
 
 ## Current boundary
 
-Version 0.6 is a local, open-source engine. It does not yet provide a hosted
+Version 0.7 is a local, open-source engine. It does not yet provide a hosted
 dashboard, team accounts, remote trace ingestion, or a secrets service. The
 planned control plane is described in [the product design](https://github.com/danielgaskins/mendmark/blob/main/docs/product.md).
 
