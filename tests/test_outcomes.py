@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 from mendmark.agent_cases import AgentCase, OutcomeContract, OutcomeInvariant, OutcomeRisk
 from mendmark.audit import AuditPolicy, run_audit
 from mendmark.cli import main
-from mendmark.enterprise_demo import run_enterprise_demo
+from mendmark.enterprise_demo import enterprise_scenarios, run_enterprise_demo
 from mendmark.mutations import OUTCOME_FIRST_MUTATIONS, generate_mutants
 from mendmark.outcomes import OutcomeContractEvaluator, invariant_passes, state_contains
 
@@ -111,7 +111,7 @@ def test_outcome_contract_rejects_non_finite_cost_and_invalid_pointer() -> None:
 def test_enterprise_demo_exposes_state_only_gap_and_writes_valid_artifacts(tmp_path: Path) -> None:
     result = run_enterprise_demo(tmp_path)
     assert result["state_only"]["business_assurance"]["status"] == "at-risk"
-    assert result["state_only"]["business_assurance"]["estimated_exposure_usd"] == 85000
+    assert result["state_only"]["business_assurance"]["estimated_exposure_usd"] == 517000
     assert result["protected"]["business_assurance"]["status"] == "protected"
     assert result["protected"]["summary"]["kill_rate"] == 1
 
@@ -124,6 +124,36 @@ def test_enterprise_demo_exposes_state_only_gap_and_writes_valid_artifacts(tmp_p
         instance = json.loads((tmp_path / artifact).read_text(encoding="utf-8"))
         schema = json.loads((root / "src" / "mendmark" / "schemas" / schema_name).read_text(encoding="utf-8"))
         Draft202012Validator(schema).validate(instance)
+
+
+def test_enterprise_scenarios_are_specific_reviewable_business_workflows() -> None:
+    scenarios = enterprise_scenarios()
+    assert set(scenarios) == {
+        "customer-support",
+        "invoice-approval",
+        "employee-access",
+        "refund-processing",
+        "employee-offboarding",
+        "vendor-bank-change",
+        "incident-remediation",
+        "shipment-exception",
+    }
+    case_ids = set()
+    for name, (case, tools) in scenarios.items():
+        assert case.case_id not in case_ids, name
+        case_ids.add(case.case_id)
+        assert case.outcome is not None
+        assert len(case.outcome.expected_state) == 2
+        assert len(case.outcome.invariants) == 2
+        assert case.outcome.risk is not None
+        assert case.outcome.risk.headline
+        assert len(tools) == 2
+        assert case.tools_called == case.expected_tools
+        assert {call.name for call in case.tools_called} == {
+            tool.name for tool in tools
+        }
+    assert enterprise_scenarios()["employee-access"][1][0].side_effecting is False
+    assert enterprise_scenarios()["refund-processing"][1][0].side_effecting is False
 
 
 def test_audit_outcomes_is_a_zero_dependency_cli_path(tmp_path: Path) -> None:

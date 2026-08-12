@@ -3,23 +3,25 @@
   "profiles": {
     "state-only": {
       "status": "at-risk",
-      "cases": 3,
-      "mutants": 24,
-      "killed": 12,
-      "survived": 12,
+      "cases": 8,
+      "mutants": 64,
+      "killed": 32,
+      "survived": 32,
       "kill_rate": 0.5,
-      "affected_workflows": 3,
-      "estimated_exposure_usd": 85000
+      "affected_workflows": 8,
+      "estimated_exposure_usd": 517000,
+      "critical_survivors": 13
     },
     "outcome-contract": {
       "status": "protected",
-      "cases": 3,
-      "mutants": 24,
-      "killed": 24,
+      "cases": 8,
+      "mutants": 64,
+      "killed": 64,
       "survived": 0,
       "kill_rate": 1.0,
       "affected_workflows": 0,
-      "estimated_exposure_usd": 0
+      "estimated_exposure_usd": 0,
+      "critical_survivors": 0
     }
   }
 }

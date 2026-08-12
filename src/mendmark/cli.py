@@ -114,7 +114,17 @@ def build_parser() -> argparse.ArgumentParser:
     demo.add_argument(
         "scenario",
         nargs="?",
-        choices=("all", "customer-support", "invoice-approval", "employee-access"),
+        choices=(
+            "all",
+            "customer-support",
+            "invoice-approval",
+            "employee-access",
+            "refund-processing",
+            "employee-offboarding",
+            "vendor-bank-change",
+            "incident-remediation",
+            "shipment-exception",
+        ),
         default="all",
         help="common business workflow to demonstrate (default: all)",
     )

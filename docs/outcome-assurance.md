@@ -53,11 +53,12 @@ mendmark demo invoice-approval --output-dir demo-review
 ```
 
 The scenarios use vendor-neutral shapes common to CRM/ticketing,
-ERP/accounts-payable, and HRIS/identity systems. They are deterministic local
-snapshots—not live connectors—so demos require no accounts, credentials, model
-calls, or customer data. Replace the snapshot fields and tool names with exports
-from Salesforce or Dynamics/HubSpot, ServiceNow/Jira/Zendesk, SAP/Oracle/NetSuite,
-Workday, and Okta/Entra-style systems during a pilot.
+ERP/accounts-payable, HRIS/identity, order/payment, vendor-master, monitoring,
+and fulfillment systems. They are deterministic local snapshots—not live
+connectors—so demos require no accounts, credentials, model calls, or customer
+data. Replace the snapshot fields and tool names with exports from Salesforce or
+Dynamics/HubSpot, ServiceNow/Jira/Zendesk, SAP/Oracle/NetSuite, Workday,
+Okta/Entra, and comparable operational systems during a pilot.
 
 The command writes `suite.json`, `state-only-report.json`, and
 `outcome-assurance-report.json`. The contrast demonstrates precisely which

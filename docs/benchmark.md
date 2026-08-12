@@ -2,10 +2,11 @@
 
 ## Enterprise Outcome Golden Set
 
-The [Enterprise Outcome Golden Set](../golden/outcome-v1/) pins three common
-business workflows spanning CRM/ticketing, ERP/payments, and HRIS/identity. It
-contains six reviewed invariants and 24 outcome-first mutations. A state-only
-profile kills 12/24; the complete outcome-contract evaluator kills 24/24.
+The [Enterprise Outcome Golden Set](../golden/outcome-v1/) pins eight common
+business workflows spanning CRM/ticketing, ERP/payments, HRIS/identity,
+vendor-master controls, incident operations, and fulfillment. It contains 16
+reviewed invariants and 64 outcome-first mutations. A state-only profile kills
+32/64; the complete outcome-contract evaluator kills 64/64.
 
 ```bash
 mendmark demo --output-dir outcome-review
