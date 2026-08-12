@@ -1,7 +1,7 @@
 <div align="center">
   <h1>Mendmark</h1>
-  <p><strong>Mutation testing for agent evals.</strong></p>
-  <p>Find the broken tool calls and coordination failures your passing tests still accept.</p>
+  <p><strong>Prove your agent evals catch costly business failures.</strong></p>
+  <p>Test outcomes, business invariants, tool use, and multi-agent coordination before production does.</p>
   <p>
     <a href="https://github.com/danielgaskins/mendmark/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/danielgaskins/mendmark/actions/workflows/tests.yml/badge.svg"></a>
     <a href="https://github.com/danielgaskins/mendmark/actions/workflows/security.yml"><img alt="Security" src="https://github.com/danielgaskins/mendmark/actions/workflows/security.yml/badge.svg"></a>
@@ -23,9 +23,11 @@
   <img src="https://raw.githubusercontent.com/danielgaskins/mendmark/main/docs/assets/mendmark-readme-hero.svg" width="100%" alt="Mendmark changes one part of a passing agent trace, reruns existing evaluators, and identifies killed faults and surviving blind spots.">
 </p>
 
-Your agent tests can all pass and still miss a broken tool call. Mendmark tests
+Your agent tests can all pass while an invoice is paid twice, access is granted
+without authority, or a required tool action silently disappears. Mendmark tests
 the tests themselves: it plants one controlled fault, runs the same evaluators
-again, and turns every survivor into a concrete blind spot to fix.
+again, and translates every survivor into a business-readable risk and a precise
+engineering finding.
 
 > **Killed** means the eval noticed the planted fault. **Survived** means the
 > damaged case still passed. A critical survivor can fail the release gate.
@@ -33,6 +35,28 @@ again, and turns every survivor into a concrete blind spot to fix.
 ## Quick start
 
 Mendmark requires Python 3.10 or newer.
+
+See the outcome-first value with no service credentials, model calls, or fixture
+setup:
+
+```bash
+pip install mendmark-evals
+mendmark demo
+```
+
+The command compares a conventional state-only evaluator with complete outcome
+assurance across CRM + ticketing, ERP + payments, and HRIS + identity workflows.
+It writes a reviewable JSON suite and both privacy-safe reports to
+`mendmark-enterprise-demo/`.
+
+Audit a reviewed outcome suite directly—without an evaluator framework or
+subprocess:
+
+```bash
+mendmark audit-outcomes mendmark-enterprise-demo/suite.json
+```
+
+For an existing DeepEval suite:
 
 ```bash
 pip install 'mendmark-evals[deepeval]'
@@ -47,6 +71,8 @@ mendmark audit examples/order_agent_suite.py \
 
 ```text
 Mendmark agent-eval audit
+Business assurance: PROTECTED
+Configured business risks were detected by the eval suite.
 Cases: 1
 Mutations: 19  Killed: 19  Survived: 0  Errors: 0
 Mutation kill rate: 100.0%
@@ -70,7 +96,7 @@ Mendmark has dependency-light adapters for LangChain/LangGraph, CrewAI, and the
 OpenAI Agents SDK. In an existing agent repository:
 
 ```bash
-python -m pip install 'mendmark-evals==0.6.1'
+python -m pip install 'mendmark-evals==0.7.0'
 mendmark equip --framework auto --agent auto
 ```
 
@@ -106,7 +132,28 @@ faults escape—including a wrong refund amount and a duplicated refund. A
 complete evaluator checks the calls, arguments, results, and response, killing
 all 19.
 
+## Outcome-first for business and engineering teams
+
+An outcome contract records the durable business state that must exist, the
+invariants that must never be violated, and optional cost and latency limits.
+Mendmark then tests whether the evaluator detects missing or corrupted state,
+broken safeguards, and exceeded operating limits. Reports lead with plain-language
+headlines such as “An invoice can be paid incorrectly,” followed by stable case
+and operator identifiers engineers can act on.
+
+Use `--mutation-profile outcome-first` when route variation is harmless and the
+business result is the release criterion. Use the default full profile when the
+route itself can change authorization, side effects, recovery, cost, or
+coordination safety. See [Outcome assurance](docs/outcome-assurance.md) for the
+contract model and decision rule.
+
 ## Agent Eval Golden Set
+
+The [Enterprise Outcome Golden Set](golden/outcome-v1/) targets the business
+surface directly: three common workflows, six system boundaries, six reviewed
+invariants, and 24 high-importance mutations. Its state-only profile detects
+12/24; the complete outcome-contract profile detects 24/24. Run it instantly
+with `mendmark demo`.
 
 The [Mendmark Agent Eval Golden Set](golden/agent-eval-v1/) is the canonical,
 versioned benchmark for the mutation engine.

@@ -62,6 +62,47 @@
         "side_effecting": {"type": "boolean"}
       }
     },
+    "outcomeRisk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headline"],
+      "properties": {
+        "headline": {"type": "string", "minLength": 1, "maxLength": 512},
+        "category": {"enum": ["financial", "operational", "compliance", "customer", "security", "reputation"]},
+        "severity": {"enum": ["low", "medium", "high", "critical"]},
+        "estimated_loss_usd": {"type": ["number", "null"], "minimum": 0},
+        "estimated_recovery_minutes": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "outcomeInvariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invariant_id", "description", "path", "operator"],
+      "properties": {
+        "invariant_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "description": {"type": "string", "minLength": 1, "maxLength": 512},
+        "path": {"type": "string", "pattern": "^/(?:[^~]|~[01])*(?:/(?:[^~]|~[01])*)*$", "minLength": 1, "maxLength": 512},
+        "operator": {"enum": ["equals", "not_equals", "exists", "not_exists", "greater_than_or_equal", "less_than_or_equal", "contains"]},
+        "expected": {},
+        "severity": {"enum": ["low", "medium", "high", "critical"]}
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["objective", "actual_state", "expected_state"],
+      "properties": {
+        "objective": {"type": "string", "minLength": 1, "maxLength": 512},
+        "actual_state": {"type": "object"},
+        "expected_state": {"type": "object"},
+        "invariants": {"type": "array", "items": {"$ref": "#/$defs/outcomeInvariant"}},
+        "risk": {"anyOf": [{"$ref": "#/$defs/outcomeRisk"}, {"type": "null"}]},
+        "actual_cost_usd": {"type": ["number", "null"], "minimum": 0},
+        "maximum_cost_usd": {"type": ["number", "null"], "minimum": 0},
+        "actual_duration_ms": {"type": ["integer", "null"], "minimum": 0},
+        "maximum_duration_ms": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
     "case": {
       "type": "object",
       "additionalProperties": false,
@@ -74,7 +115,8 @@
         "tools_called": {"type": "array", "items": {"$ref": "#/$defs/call"}},
         "expected_tools": {"type": "array", "items": {"$ref": "#/$defs/call"}},
         "metadata": {"type": "object"},
-        "tags": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 512}}
+        "tags": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+        "outcome": {"$ref": "#/$defs/outcome"}
       }
     }
   }

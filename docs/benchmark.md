@@ -1,5 +1,19 @@
 # Benchmarks
 
+## Enterprise Outcome Golden Set
+
+The [Enterprise Outcome Golden Set](../golden/outcome-v1/) pins three common
+business workflows spanning CRM/ticketing, ERP/payments, and HRIS/identity. It
+contains six reviewed invariants and 24 outcome-first mutations. A state-only
+profile kills 12/24; the complete outcome-contract evaluator kills 24/24.
+
+```bash
+mendmark demo --output-dir outcome-review
+```
+
+The generated suite and reports are deterministic apart from report timestamps.
+They require no model, network, service credentials, or customer data.
+
 ## Agent Eval Golden Set
 
 The [Mendmark Agent Eval Golden Set](../golden/agent-eval-v1/) is the canonical

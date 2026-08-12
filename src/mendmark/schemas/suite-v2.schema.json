@@ -90,7 +90,8 @@
         "agents": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/agent"}},
         "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
         "expected_events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
-        "root_agent_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 512}
+        "root_agent_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
+        "outcome": {"$ref": "suite-v1.schema.json#/$defs/outcome"}
       },
       "dependentRequired": {
         "events": ["agents", "root_agent_id"],

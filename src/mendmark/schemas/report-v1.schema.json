@@ -6,7 +6,8 @@
   "additionalProperties": false,
   "required": [
     "schema_version", "generated_at", "provenance", "summary", "scope",
-    "policy", "gate", "baseline_issues", "regressions", "tools", "mutations"
+    "policy", "gate", "baseline_issues", "regressions", "tools", "coverage",
+    "mutations", "business_assurance"
   ],
   "properties": {
     "schema_version": {"const": "1.0"},
@@ -86,8 +87,9 @@
     "coverage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["by_category", "by_operator"],
+      "required": ["by_assurance_layer", "by_category", "by_operator"],
       "properties": {
+        "by_assurance_layer": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}},
         "by_category": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}},
         "by_operator": {"type": "object", "additionalProperties": {"$ref": "#/$defs/coverage"}}
       }
@@ -95,7 +97,8 @@
     "mutations": {
       "type": "array",
       "items": {"$ref": "#/$defs/mutation"}
-    }
+    },
+    "business_assurance": {"$ref": "#/$defs/business_assurance"}
   },
   "$defs": {
     "strings": {"type": "array", "items": {"type": "string"}},
@@ -139,6 +142,34 @@
         "survived": {"type": "integer", "minimum": 0},
         "errors": {"type": "integer", "minimum": 0},
         "kill_rate": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "business_risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "headline", "severity", "category", "assurance_layer"],
+      "properties": {
+        "case_id": {"type": "string"},
+        "headline": {"type": "string"},
+        "severity": {"enum": ["low", "medium", "high", "critical"]},
+        "category": {"enum": ["financial", "operational", "compliance", "customer", "security", "reputation"]},
+        "assurance_layer": {"enum": ["outcome-integrity", "business-invariants", "execution-quality"]},
+        "estimated_loss_usd": {"type": "number", "minimum": 0},
+        "estimated_recovery_minutes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "business_assurance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "headline", "outcome_contracts", "affected_workflows", "surviving_risks", "estimated_exposure_usd", "estimated_recovery_minutes"],
+      "properties": {
+        "status": {"enum": ["protected", "at-risk"]},
+        "headline": {"type": "string"},
+        "outcome_contracts": {"type": "integer", "minimum": 0},
+        "affected_workflows": {"type": "integer", "minimum": 0},
+        "surviving_risks": {"type": "array", "items": {"$ref": "#/$defs/business_risk"}},
+        "estimated_exposure_usd": {"type": "number", "minimum": 0},
+        "estimated_recovery_minutes": {"type": "integer", "minimum": 0}
       }
     },
     "tools": {
@@ -192,7 +223,7 @@
     "mutation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mutant_id", "source_case_id", "operator", "category", "description", "severity", "tool_name", "status", "killed_by", "evaluation_errors"],
+      "required": ["mutant_id", "source_case_id", "operator", "category", "description", "severity", "tool_name", "assurance_layer", "business_headline", "status", "killed_by", "evaluation_errors"],
       "properties": {
         "mutant_id": {"type": "string"},
         "source_case_id": {"type": "string"},
@@ -201,6 +232,11 @@
         "description": {"type": "string"},
         "severity": {"enum": ["low", "medium", "high", "critical"]},
         "tool_name": {"type": ["string", "null"]},
+        "assurance_layer": {"enum": ["outcome-integrity", "business-invariants", "execution-quality"]},
+        "business_headline": {"type": "string"},
+        "risk_category": {"enum": ["financial", "operational", "compliance", "customer", "security", "reputation"]},
+        "estimated_loss_usd": {"type": "number", "minimum": 0},
+        "estimated_recovery_minutes": {"type": "integer", "minimum": 0},
         "agent_id": {"type": "string"},
         "target_agent_id": {"type": "string"},
         "event_id": {"type": "string"},

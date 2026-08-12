@@ -3,6 +3,19 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
+## 0.7.0 - 2026-08-12
+
+### Added
+
+- Outcome contracts for durable business state, reviewed invariants, cost and
+  latency budgets, consequence metadata, and a dependency-free evaluator.
+- Five outcome-first mutations and an `outcome-first` JSON audit profile that
+  tolerates harmless route variation while testing business consequences.
+- Business-readable assurance summaries, risk headlines, represented exposure,
+  and coverage grouped by outcome integrity, invariants, and execution quality.
+- A one-command enterprise demo and golden benchmark spanning common
+  CRM/ticketing, ERP/payments, and HRIS/identity workflow shapes.
+
 ## 0.6.1 - 2026-08-10
 
 ### Added

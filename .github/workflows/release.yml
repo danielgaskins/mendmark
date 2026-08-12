@@ -26,6 +26,7 @@ jobs:
           python benchmarks/benchmark_golden_set.py
           python benchmarks/benchmark_multi_agent_golden_set.py
           python benchmarks/benchmark_multi_agent_golden_set_v2.py
+          python benchmarks/benchmark_outcome_golden_set.py
       - name: Enforce enterprise-scale resource budgets
         run: python benchmarks/benchmark_enterprise.py
       - name: Build and inspect distributions

@@ -105,6 +105,9 @@ def main() -> int:
                 ("golden", "multi-agent-v2", "evaluator.py"),
                 ("golden", "multi-agent-v2", "weak_evaluator.py"),
                 ("golden", "multi-agent-v2", "results.json"),
+                ("golden", "outcome-v1", "manifest.json"),
+                ("golden", "outcome-v1", "suite.json"),
+                ("golden", "outcome-v1", "results.json"),
                 ("pilot", "evidence.schema.json"),
                 ("pilot", "README.md"),
                 ("examples", "multi_agent_suite.json"),
@@ -118,8 +121,33 @@ def main() -> int:
                     + ", ".join("/".join(path) for path in missing)
                 )
         help_text = run([str(mendmark), "--help"], cwd=workspace, env=clean_env)
-        if "mutation-test" not in help_text.lower() or "audit-json" not in help_text:
+        if (
+            "mutation-test" not in help_text.lower()
+            or "audit-json" not in help_text
+            or "audit-outcomes" not in help_text
+            or "demo" not in help_text
+        ):
             raise RuntimeError("installed CLI help is missing the primary product journey")
+        demo_output = run(
+            [str(mendmark), "demo", "invoice-approval"],
+            cwd=workspace,
+            env=clean_env,
+        )
+        demo_report = json.loads(
+            (
+                workspace
+                / "mendmark-enterprise-demo"
+                / "outcome-assurance-report.json"
+            ).read_text(encoding="utf-8")
+        )
+        if (
+            "State-only evaluation: AT-RISK" not in demo_output
+            or demo_report["business_assurance"]["status"] != "protected"
+            or demo_report["summary"]["mutants"] != 8
+        ):
+            raise RuntimeError(
+                "installed wheel outcome demo did not show the expected contrast"
+            )
         prompt = run(
             [str(mendmark), "equip", "--print-agent-prompt"],
             cwd=workspace,

@@ -36,7 +36,7 @@ guide](https://openai.github.io/openai-agents-python/tracing/).
 From the agent application repository:
 
 ```bash
-python -m pip install 'mendmark-evals==0.6.1'
+python -m pip install 'mendmark-evals==0.7.0'
 mendmark equip --framework auto --agent auto
 ```
 

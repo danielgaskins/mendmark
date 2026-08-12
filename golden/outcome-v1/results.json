@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "profiles": {
+    "state-only": {
+      "status": "at-risk",
+      "cases": 3,
+      "mutants": 24,
+      "killed": 12,
+      "survived": 12,
+      "kill_rate": 0.5,
+      "affected_workflows": 3,
+      "estimated_exposure_usd": 85000
+    },
+    "outcome-contract": {
+      "status": "protected",
+      "cases": 3,
+      "mutants": 24,
+      "killed": 24,
+      "survived": 0,
+      "kill_rate": 1.0,
+      "affected_workflows": 0,
+      "estimated_exposure_usd": 0
+    }
+  }
+}

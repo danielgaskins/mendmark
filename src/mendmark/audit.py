@@ -10,6 +10,102 @@ from .agent_cases import AgentCase, ToolSpec, case_graph_issues
 from .mutations import Mutant, MutationOperator, generate_mutants
 
 
+_BUSINESS_HEADLINES = {
+    "tool.removed": "A required business action can be skipped without detection",
+    "tool.arguments_changed": "A business action can use incorrect data without detection",
+    "tool.argument_omitted": "Required business-action data can be omitted without detection",
+    "tool.identifier_swapped": "A business action can target the wrong record or customer",
+    "tool.output_corrupted": "A failed dependency can be treated as a valid result",
+    "tool.side_effect_duplicated": "A consequential action can happen twice without detection",
+    "recovery.false_success": "The workflow can report success after a dependency fails",
+    "agent.authorization_violated": "An unauthorized agent can perform a protected action",
+    "coordination.result_dropped": "Required specialist work can disappear before completion",
+    "coordination.state_update_corrupted": "Shared business state can be corrupted without detection",
+    "coordination.branch_abandoned": "A required workflow branch can be abandoned",
+}
+
+
+def _assurance_layer(mutant: Mutant) -> str:
+    if mutant.assurance_layer is not None:
+        return mutant.assurance_layer
+    if mutant.category in {"response", "recovery"}:
+        return "outcome-integrity"
+    if mutant.category in {"authorization", "shared-state"} or mutant.operator == "tool.side_effect_duplicated":
+        return "business-invariants"
+    return "execution-quality"
+
+
+def _business_headline(mutant: Mutant) -> str:
+    return mutant.business_headline or _BUSINESS_HEADLINES.get(
+        mutant.operator, mutant.description
+    )
+
+
+def _business_assurance(
+    cases: tuple[AgentCase, ...], mutation_results: list[dict[str, object]]
+) -> dict[str, object]:
+    survivors = [item for item in mutation_results if item["status"] != "killed"]
+    severity_rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+    distinct: dict[tuple[str, str], dict[str, object]] = {}
+    for item in survivors:
+        key = (str(item["source_case_id"]), str(item["business_headline"]))
+        existing = distinct.get(key)
+        if existing is None or severity_rank[str(item["severity"])] > severity_rank[
+            str(existing["severity"])
+        ]:
+            distinct[key] = {
+                "case_id": item["source_case_id"],
+                "headline": item["business_headline"],
+                "severity": item["severity"],
+                "category": item.get("risk_category") or "operational",
+                "assurance_layer": item["assurance_layer"],
+                **(
+                    {"estimated_loss_usd": item["estimated_loss_usd"]}
+                    if item.get("estimated_loss_usd") is not None
+                    else {}
+                ),
+                **(
+                    {"estimated_recovery_minutes": item["estimated_recovery_minutes"]}
+                    if item.get("estimated_recovery_minutes") is not None
+                    else {}
+                ),
+            }
+    risks = sorted(
+        distinct.values(),
+        key=lambda item: (-severity_rank[str(item["severity"])], str(item["headline"])),
+    )
+    outcome_cases = sum(case.outcome is not None for case in cases)
+    protected = len(risks) == 0
+    affected_workflows = len({str(item["case_id"]) for item in risks})
+    exposure_by_case: dict[str, float] = {}
+    recovery_by_case: dict[str, int] = {}
+    for item in risks:
+        case_id = str(item["case_id"])
+        exposure_by_case[case_id] = max(
+            exposure_by_case.get(case_id, 0), float(item.get("estimated_loss_usd", 0))
+        )
+        recovery_by_case[case_id] = max(
+            recovery_by_case.get(case_id, 0),
+            int(item.get("estimated_recovery_minutes", 0)),
+        )
+    return {
+        "status": "protected" if protected else "at-risk",
+        "headline": (
+            "Configured business risks were detected by the eval suite."
+            if protected
+            else (
+                f"{affected_workflows} workflow(s) have "
+                f"{len(risks)} undetected risk check(s)."
+            )
+        ),
+        "outcome_contracts": outcome_cases,
+        "affected_workflows": affected_workflows,
+        "surviving_risks": risks,
+        "estimated_exposure_usd": round(sum(exposure_by_case.values()), 2),
+        "estimated_recovery_minutes": sum(recovery_by_case.values()),
+    }
+
+
 @dataclass(frozen=True)
 class MetricResult:
     name: str
@@ -470,6 +566,23 @@ def run_audit(
                 "status": status,
                 "killed_by": sorted(killed_by),
                 "evaluation_errors": sorted(evaluation_errors),
+                "assurance_layer": _assurance_layer(mutant),
+                "business_headline": _business_headline(mutant),
+                **(
+                    {"risk_category": mutant.risk_category}
+                    if mutant.risk_category is not None
+                    else {}
+                ),
+                **(
+                    {"estimated_loss_usd": mutant.estimated_loss_usd}
+                    if mutant.estimated_loss_usd is not None
+                    else {}
+                ),
+                **(
+                    {"estimated_recovery_minutes": mutant.estimated_recovery_minutes}
+                    if mutant.estimated_recovery_minutes is not None
+                    else {}
+                ),
                 **(
                     {"agent_id": mutant.agent_id}
                     if mutant.agent_id is not None
@@ -584,6 +697,9 @@ def run_audit(
         },
         "tools": tools_report,
         "coverage": {
+            "by_assurance_layer": _grouped_mutation_coverage(
+                mutation_results, "assurance_layer"
+            ),
             "by_category": _grouped_mutation_coverage(
                 mutation_results, "category"
             ),
@@ -592,6 +708,7 @@ def run_audit(
             ),
         },
         "mutations": mutation_results,
+        "business_assurance": _business_assurance(cases, mutation_results),
     }
     if agents_report is not None:
         report["agents"] = agents_report

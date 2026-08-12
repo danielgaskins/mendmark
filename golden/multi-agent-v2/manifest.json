@@ -8,8 +8,8 @@
     "evaluator.py": "475d9bbbf2d8e32371d37661017f6970b6ad577347b644babde4ad659ca88f6a",
     "weak_evaluator.py": "490b2cd85b1c8b5302682b388f6821a543ad1e615e2714139d9cc44dbc779cc9",
     "README.md": "6ffbfbff83fc3fe1aadaee2d5594c90d1085fdbdd80755fda0639356f8391d58",
-    "suite-v2.schema.json": "8fa6edaad5d6b1052fbf0ee24c8403a37fb400580b2c88086ff009e033e25278",
-    "report-v1.schema.json": "c8f4f0c495fdbbe16ba3f4b0517817df715c204fbf9c4fb2c990b4dc0ed5073e"
+    "suite-v2.schema.json": "ba3977502882d68e36a83df1c5aa76f0ba1398ea6278a9569bac782435333f08",
+    "report-v1.schema.json": "6bff193ec67b38d7970fdeff3ce931bd828fa737775b98ea40c02493d6607874"
   },
   "mutation_id_digest": "e023a6686ed59fc79ddba4db63131171d3031b34ed8b4cc2b3defb0610a2e337",
   "methodology": {

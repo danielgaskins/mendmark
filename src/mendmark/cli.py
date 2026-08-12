@@ -16,6 +16,7 @@ from .mutations import (
     AGENT_EVAL_V1_MUTATIONS,
     DEFAULT_MUTATIONS,
     MULTI_AGENT_V1_MUTATIONS,
+    OUTCOME_FIRST_MUTATIONS,
 )
 from .plugins import load_mutation_plugins
 from .runner import RunnerError, _write_json, grade_run, load_manifest, prepare_run
@@ -107,6 +108,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="print a prompt for a repository coding agent without writing files",
     )
 
+    demo = subparsers.add_parser(
+        "demo", help="run a reviewable outcome-assurance enterprise demo"
+    )
+    demo.add_argument(
+        "scenario",
+        nargs="?",
+        choices=("all", "customer-support", "invoice-approval", "employee-access"),
+        default="all",
+        help="common business workflow to demonstrate (default: all)",
+    )
+    demo.add_argument(
+        "--output-dir",
+        default="mendmark-enterprise-demo",
+        help="directory for the reviewable suite and reports",
+    )
+
     prepare = subparsers.add_parser("prepare", help="create a public agent workspace")
     prepare.add_argument("task_id")
     prepare.add_argument("--runs-root", default="runs")
@@ -158,11 +175,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     audit_json.add_argument(
         "--mutation-profile",
-        choices=("current", "agent-eval-v1", "multi-agent-v1"),
+        choices=("current", "agent-eval-v1", "multi-agent-v1", "outcome-first"),
         default="current",
         help="replay a historical built-in operator profile (default: current)",
     )
     _audit_arguments(audit_json)
+
+    audit_outcomes = subparsers.add_parser(
+        "audit-outcomes",
+        help="audit reviewed business outcomes without an evaluator dependency",
+    )
+    audit_outcomes.add_argument("suite", help="validated Mendmark JSON suite")
+    _audit_arguments(audit_outcomes)
 
     sign = subparsers.add_parser(
         "sign", help="sign a report or baseline with Sigstore Cosign"
@@ -267,6 +291,19 @@ def _print_audit(report: dict[str, object], output: Path) -> None:
     gate = report["gate"]
     tools = report["tools"]
     print("Mendmark agent-eval audit")
+    business = report["business_assurance"]
+    print(
+        "Business assurance: "
+        + ("PROTECTED" if business["status"] == "protected" else "AT RISK")
+    )
+    print(business["headline"])
+    if business["estimated_exposure_usd"]:
+        print(f"Estimated exposure represented: ${business['estimated_exposure_usd']:,.2f}")
+    if business["estimated_recovery_minutes"]:
+        print(
+            "Estimated recovery effort represented: "
+            f"{business['estimated_recovery_minutes']} minutes"
+        )
     print(f"Cases: {summary['cases']}")
     print(
         f"Mutations: {summary['mutants']}  "
@@ -307,6 +344,11 @@ def _print_audit(report: dict[str, object], output: Path) -> None:
         if mutation["status"] == "survived"
     ]
     if survived:
+        risks = business["surviving_risks"]
+        if risks:
+            print("Business risks needing coverage:")
+            for risk in risks:
+                print(f"  {risk['severity']}: {risk['headline']} [{risk['case_id']}]")
         categories = report["coverage"]["by_category"]
         category_counts = [
             f"{category}={coverage['survived']}"
@@ -326,7 +368,8 @@ def _print_audit(report: dict[str, object], output: Path) -> None:
                 context.append(f"tool={mutation['tool_name']}")
             context_text = f" ({', '.join(context)})" if context else ""
             print(
-                f"  {mutation['severity']}: {mutation['operator']} "
+                f"  {mutation['severity']}: {mutation['business_headline']} "
+                f"({mutation['operator']}) "
                 f"[{mutation['source_case_id']}]{context_text}"
             )
     print("Gate: " + ("PASS" if gate["passed"] else "FAIL"))
@@ -476,6 +519,26 @@ def main(argv: list[str] | None = None) -> int:
                 print("Next: ask your coding agent to complete .mendmark/agent-setup.md")
             return 0
 
+        if args.command == "demo":
+            from .enterprise_demo import run_enterprise_demo
+
+            result = run_enterprise_demo(
+                Path(args.output_dir).expanduser().resolve(), args.scenario
+            )
+            weak = result["state_only"]["business_assurance"]
+            protected = result["protected"]["business_assurance"]
+            print("Mendmark enterprise outcome demo")
+            print(
+                f"State-only evaluation: {weak['status'].upper()} — "
+                f"{weak['headline']}"
+            )
+            print(
+                f"Outcome + invariants: {protected['status'].upper()} — "
+                f"{protected['headline']}"
+            )
+            print(f"Reviewable artifacts: {result['output_dir']}")
+            return 0 if protected["status"] == "protected" else 1
+
         if args.command == "prepare":
             task = _task(tasks_root, args.task_id)
             run_dir = prepare_run(
@@ -520,7 +583,7 @@ def main(argv: list[str] | None = None) -> int:
             print("Signature verified.")
             return 0
 
-        if args.command in {"audit", "audit-json"}:
+        if args.command in {"audit", "audit-json", "audit-outcomes"}:
             if args.command == "audit":
                 from .deepeval import load_deepeval_suite
 
@@ -528,7 +591,7 @@ def main(argv: list[str] | None = None) -> int:
                 evaluator = suite.evaluator
                 operators = suite.operators
                 adapter = "deepeval"
-            else:
+            elif args.command == "audit-json":
                 from .json_adapter import JsonCommandEvaluator, load_json_suite
 
                 suite = load_json_suite(args.suite)
@@ -543,7 +606,16 @@ def main(argv: list[str] | None = None) -> int:
                     "current": DEFAULT_MUTATIONS,
                     "agent-eval-v1": AGENT_EVAL_V1_MUTATIONS,
                     "multi-agent-v1": MULTI_AGENT_V1_MUTATIONS,
+                    "outcome-first": OUTCOME_FIRST_MUTATIONS,
                 }[args.mutation_profile]
+                adapter = "json-command"
+            else:
+                from .json_adapter import load_json_suite
+                from .outcomes import OutcomeContractEvaluator
+
+                suite = load_json_suite(args.suite)
+                evaluator = OutcomeContractEvaluator()
+                operators = OUTCOME_FIRST_MUTATIONS
                 adapter = "json-command"
             external_operators = load_mutation_plugins(args.mutation_plugin)
             operators = operators + external_operators

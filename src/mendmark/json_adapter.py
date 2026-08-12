@@ -14,6 +14,9 @@ from .agent_cases import (
     AgentCase,
     AgentEvent,
     AgentSpec,
+    OutcomeContract,
+    OutcomeInvariant,
+    OutcomeRisk,
     ToolCallRecord,
     ToolSpec,
     case_graph_issues,
@@ -66,6 +69,94 @@ def _optional_string(value: Any, location: str) -> str | None:
     if value is None:
         return None
     return _string(value, location)
+
+
+def _optional_number(value: Any, location: str) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        raise JsonAdapterError(f"{location} must be a finite number or null")
+    return float(value)
+
+
+def _optional_integer(value: Any, location: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise JsonAdapterError(f"{location} must be an integer or null")
+    return value
+
+
+def _outcome_invariant(value: Any, location: str) -> OutcomeInvariant:
+    data = _object(value, location)
+    _reject_unknown(
+        data,
+        {"invariant_id", "description", "path", "operator", "expected", "severity"},
+        location,
+    )
+    try:
+        return OutcomeInvariant(
+            invariant_id=str(_string(data.get("invariant_id"), f"{location}.invariant_id")),
+            description=str(_string(data.get("description"), f"{location}.description")),
+            path=str(_string(data.get("path"), f"{location}.path")),
+            operator=str(_string(data.get("operator"), f"{location}.operator")),
+            expected=data.get("expected"),
+            severity=str(data.get("severity", "critical")),
+        )
+    except ValueError as error:
+        raise JsonAdapterError(f"invalid {location}: {error}") from error
+
+
+def _outcome_risk(value: Any, location: str) -> OutcomeRisk:
+    data = _object(value, location)
+    _reject_unknown(
+        data,
+        {"headline", "category", "severity", "estimated_loss_usd", "estimated_recovery_minutes"},
+        location,
+    )
+    try:
+        return OutcomeRisk(
+            headline=str(_string(data.get("headline"), f"{location}.headline")),
+            category=str(data.get("category", "operational")),
+            severity=str(data.get("severity", "critical")),
+            estimated_loss_usd=_optional_number(data.get("estimated_loss_usd"), f"{location}.estimated_loss_usd"),
+            estimated_recovery_minutes=_optional_integer(data.get("estimated_recovery_minutes"), f"{location}.estimated_recovery_minutes"),
+        )
+    except ValueError as error:
+        raise JsonAdapterError(f"invalid {location}: {error}") from error
+
+
+def _outcome(value: Any, location: str) -> OutcomeContract:
+    data = _object(value, location)
+    _reject_unknown(
+        data,
+        {
+            "objective", "actual_state", "expected_state", "invariants", "risk",
+            "actual_cost_usd", "maximum_cost_usd", "actual_duration_ms", "maximum_duration_ms",
+        },
+        location,
+    )
+    actual_state = _object(data.get("actual_state", {}), f"{location}.actual_state")
+    expected_state = _object(data.get("expected_state", {}), f"{location}.expected_state")
+    invariants = tuple(
+        _outcome_invariant(item, f"{location}.invariants[{index}]")
+        for index, item in enumerate(_array(data.get("invariants", []), f"{location}.invariants"))
+    )
+    risk_value = data.get("risk")
+    try:
+        return OutcomeContract(
+            objective=str(_string(data.get("objective"), f"{location}.objective")),
+            actual_state=actual_state,
+            expected_state=expected_state,
+            invariants=invariants,
+            risk=_outcome_risk(risk_value, f"{location}.risk") if risk_value is not None else None,
+            actual_cost_usd=_optional_number(data.get("actual_cost_usd"), f"{location}.actual_cost_usd"),
+            maximum_cost_usd=_optional_number(data.get("maximum_cost_usd"), f"{location}.maximum_cost_usd"),
+            actual_duration_ms=_optional_integer(data.get("actual_duration_ms"), f"{location}.actual_duration_ms"),
+            maximum_duration_ms=_optional_integer(data.get("maximum_duration_ms"), f"{location}.maximum_duration_ms"),
+        )
+    except ValueError as error:
+        raise JsonAdapterError(f"invalid {location}: {error}") from error
 
 
 def _tool_call(value: Any, location: str) -> ToolCallRecord:
@@ -180,6 +271,7 @@ def _case(value: Any, index: int, *, schema_version: str) -> AgentCase:
             "expected_tools",
             "metadata",
             "tags",
+            "outcome",
     }
     if schema_version == "2.0":
         allowed.update({"agents", "events", "expected_events", "root_agent_id"})
@@ -221,6 +313,11 @@ def _case(value: Any, index: int, *, schema_version: str) -> AgentCase:
         ),
         root_agent_id=_optional_string(
             data.get("root_agent_id"), f"{location}.root_agent_id"
+        ),
+        outcome=(
+            _outcome(data["outcome"], f"{location}.outcome")
+            if data.get("outcome") is not None
+            else None
         ),
     )
 
@@ -358,6 +455,39 @@ def case_to_json(case: AgentCase) -> dict[str, Any]:
         "metadata": case.metadata,
         "tags": list(case.tags),
     }
+    if case.outcome is not None:
+        contract = case.outcome
+        serialized["outcome"] = {
+            "objective": contract.objective,
+            "actual_state": contract.actual_state,
+            "expected_state": contract.expected_state,
+            "invariants": [
+                {
+                    "invariant_id": item.invariant_id,
+                    "description": item.description,
+                    "path": item.path,
+                    "operator": item.operator,
+                    "expected": item.expected,
+                    "severity": item.severity,
+                }
+                for item in contract.invariants
+            ],
+            "risk": (
+                {
+                    "headline": contract.risk.headline,
+                    "category": contract.risk.category,
+                    "severity": contract.risk.severity,
+                    "estimated_loss_usd": contract.risk.estimated_loss_usd,
+                    "estimated_recovery_minutes": contract.risk.estimated_recovery_minutes,
+                }
+                if contract.risk is not None
+                else None
+            ),
+            "actual_cost_usd": contract.actual_cost_usd,
+            "maximum_cost_usd": contract.maximum_cost_usd,
+            "actual_duration_ms": contract.actual_duration_ms,
+            "maximum_duration_ms": contract.maximum_duration_ms,
+        }
     if case.is_multi_agent:
         serialized.update(
             {
