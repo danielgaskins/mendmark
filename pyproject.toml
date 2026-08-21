@@ -26,6 +26,8 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/danielgaskins/mendmark"
+Creator = "https://danielgaskins.com/"
+"Field Note" = "https://danielgaskins.com/agent-eval-mutation-testing.html"
 Repository = "https://github.com/danielgaskins/mendmark"
 Issues = "https://github.com/danielgaskins/mendmark/issues"
 Changelog = "https://github.com/danielgaskins/mendmark/blob/main/CHANGELOG.md"

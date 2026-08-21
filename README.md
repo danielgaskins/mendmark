@@ -23,6 +23,11 @@
   <img src="https://raw.githubusercontent.com/danielgaskins/mendmark/main/docs/assets/mendmark-readme-hero.svg" width="100%" alt="Mendmark changes one part of a passing agent trace, reruns existing evaluators, and identifies killed faults and surviving blind spots.">
 </p>
 
+<p align="center">
+  Created by <a href="https://danielgaskins.com/">Daniel Gaskins</a> ·
+  <a href="https://danielgaskins.com/agent-eval-mutation-testing.html">Read the mutation-testing field note</a>
+</p>
+
 Your agent tests can all pass while an invoice is paid twice, access is granted
 without authority, or a required tool action silently disappears. Mendmark tests
 the tests themselves: it plants one controlled fault, runs the same evaluators
