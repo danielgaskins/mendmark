@@ -216,6 +216,33 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--key", help="Cosign public key path or KMS URI")
     verify.add_argument("--certificate-identity")
     verify.add_argument("--certificate-oidc-issuer")
+
+    export_lg = subparsers.add_parser(
+        "export-latchgate",
+        help="export counterfactual JSONL calibration pairs for LatchGate runtime circuit breakers",
+    )
+    export_lg.add_argument("suite", help="validated Mendmark JSON suite or trusted DeepEval Python suite")
+    export_lg.add_argument(
+        "--output",
+        default="latchgate-pairs.jsonl",
+        help="destination JSONL path for latchgate fit (default: latchgate-pairs.jsonl)",
+    )
+    export_lg.add_argument(
+        "--mutation-profile",
+        choices=("current", "agent-eval-v1", "multi-agent-v1", "outcome-first"),
+        default="current",
+        help="operator profile used to synthesize fault pairs (default: current)",
+    )
+    export_lg.add_argument(
+        "--min-severity",
+        choices=("low", "medium", "high", "critical"),
+        default="high",
+        help="minimum mutation severity to export (default: high)",
+    )
+    export_lg.add_argument(
+        "--survivors-from",
+        help="optional Mendmark report JSON; when provided, exports only surviving mutations",
+    )
     return parser
 
 
@@ -591,6 +618,25 @@ def main(argv: list[str] | None = None) -> int:
                 certificate_oidc_issuer=args.certificate_oidc_issuer,
             )
             print("Signature verified.")
+            return 0
+
+        if args.command == "export-latchgate":
+            from .latchgate import export_latchgate_pairs
+
+            summary = export_latchgate_pairs(
+                args.suite,
+                args.output,
+                mutation_profile=args.mutation_profile,
+                min_severity=args.min_severity,
+                survivors_from=args.survivors_from,
+            )
+            print("Mendmark LatchGate calibration export")
+            print(
+                f"Cases: {summary['cases']}  "
+                f"Exported pairs: {summary['exported_pairs']}  "
+                f"Minimum severity: {summary['min_severity']}"
+            )
+            print(f"Output: {summary['output_path']}")
             return 0
 
         if args.command in {"audit", "audit-json", "audit-outcomes"}:

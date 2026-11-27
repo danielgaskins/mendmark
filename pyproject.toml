@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mendmark-evals"
-version = "0.7.1"
+version = "0.7.2"
 description = "Mutation testing for agent evaluation suites"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -35,6 +35,7 @@ Documentation = "https://github.com/danielgaskins/mendmark#readme"
 Security = "https://github.com/danielgaskins/mendmark/security/policy"
 Support = "https://github.com/danielgaskins/mendmark/blob/main/SUPPORT.md"
 "Golden Sets" = "https://github.com/danielgaskins/mendmark/tree/main/golden"
+"Runtime Firewall" = "https://github.com/danielgaskins/latchgate"
 
 [project.optional-dependencies]
 deepeval = ["deepeval>=4,<5"]

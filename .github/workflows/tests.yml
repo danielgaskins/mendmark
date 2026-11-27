@@ -89,11 +89,13 @@ jobs:
       - run: python -m pip install --upgrade pip
       - name: Install minimum supported integrations
         if: matrix.dependency-profile == 'minimum'
-        run: python -m pip install -e '.[dev]' 'deepeval==4.0.0' 'rubric-eval==0.2.0'
+        run: python -m pip install -e '.[dev]' 'deepeval==4.0.0' 'sentry-sdk<3' 'rubric-eval==0.2.0'
       - name: Install latest supported integrations
         if: matrix.dependency-profile == 'latest'
         run: python -m pip install -e '.[deepeval,rubric,dev]'
       - run: python -m pytest tests/test_deepeval.py tests/test_rubric_example.py
+        env:
+          DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
 
   harness-compatibility:
     name: harness-compatibility (${{ matrix.profile }})
