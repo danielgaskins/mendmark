@@ -432,6 +432,23 @@ be tested against known bad outcomes before its score is trusted.
 See [the DeepEval guide](https://github.com/danielgaskins/mendmark/blob/main/docs/deepeval.md)
 and the [ML evaluation card](https://github.com/danielgaskins/mendmark/blob/main/docs/evaluation-card.md).
 
+## Runtime circuit breakers with LatchGate
+
+Mendmark identifies silent tool-call and outcome blind spots in CI;
+[LatchGate](https://github.com/danielgaskins/latchgate) blocks those failure
+modes inside the residual stream of open-weights LLMs at runtime. Export paired
+clean and fault-injected traces directly into `latchgate fit` format:
+
+```bash
+mendmark export-latchgate examples/order_agent_suite.json \
+  --output latchgate-pairs.jsonl
+
+# Or export only surviving blind spots from an audit report:
+mendmark export-latchgate examples/order_agent_suite.json \
+  --survivors-from mendmark-report.json \
+  --output survivor-pairs.jsonl
+```
+
 ## Current boundary
 
 Version 0.7 is a local, open-source engine. It does not yet provide a hosted

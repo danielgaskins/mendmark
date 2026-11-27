@@ -3,6 +3,16 @@
 All notable changes to Mendmark are documented here. The project follows
 Semantic Versioning for its Python and JSON contracts.
 
+## 0.7.2 - 2026-11-27
+
+### Added
+
+- `mendmark export-latchgate` CLI subcommand and `export_latchgate_pairs` Python
+  API to convert clean baseline cases and planted fault mutations (or strictly
+  surviving blind spots via `--survivors-from`) into `latchgate.pair.v1`
+  counterfactual JSONL calibration pairs for [LatchGate](https://github.com/danielgaskins/latchgate)
+  runtime residual-stream circuit breakers.
+
 ## 0.7.1 - 2026-08-12
 
 ### Added

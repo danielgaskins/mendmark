@@ -10,9 +10,10 @@ from .agent_cases import (
     ToolCallRecord,
     ToolSpec,
 )
+from .latchgate import build_latchgate_pairs, export_latchgate_pairs
 from .outcomes import OutcomeContractEvaluator
 
-__version__ = "0.7.1"
+__version__ = "0.7.2"
 
 __all__ = [
     "AgentCase",
@@ -25,4 +26,6 @@ __all__ = [
     "ToolCallRecord",
     "ToolSpec",
     "__version__",
+    "build_latchgate_pairs",
+    "export_latchgate_pairs",
 ]
