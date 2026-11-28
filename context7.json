@@ -1,0 +1,19 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Mendmark",
+  "description": "Deterministic mutation testing and business-outcome contract auditing for AI agent evaluations across closed APIs and open-weights frameworks (LangGraph, CrewAI, OpenAI Agents SDK, DeepEval), with LatchGate runtime export.",
+  "excludeFolders": [
+    "tests",
+    "benchmarks",
+    "runs"
+  ],
+  "excludeFiles": [
+    "LICENSE"
+  ],
+  "rules": [
+    "Run `mendmark demo` for a zero-credential local demonstration and `mendmark equip --framework auto --agent auto` to scaffold non-destructive repository setup files under `.mendmark/`.",
+    "Never convert observed agent traces into golden expected behavior without explicit human review, and redact credentials or personal data before saving fixtures.",
+    "Evaluate all four agent correctness surfaces (tool selection, arguments, execution outcomes/business invariants, and final response) rather than grading final text responses alone.",
+    "When the target agent runs on self-hosted open-weights models, run `mendmark export-latchgate <suite.json> --output pairs.jsonl` to compile a runtime residual-stream circuit breaker with `latchgate fit`."
+  ]
+}
